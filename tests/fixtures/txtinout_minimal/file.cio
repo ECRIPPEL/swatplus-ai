@@ -1,0 +1,5 @@
+file.cio: minimal synthetic fixture for SWAT+ rev.61.0.2 written by SWAT+ editor v3.1.4
+simulation        time.sim          print.prt         null              object.cnt        null
+basin             codes.bsn         parameters.bsn
+climate           weather-sta.cli   weather-wgn.cli   null              pcp.cli           null
+hru               hru-data.hru      null

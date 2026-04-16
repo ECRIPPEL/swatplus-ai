@@ -1,0 +1,13 @@
+print.prt: minimal synthetic fixture for SWAT+ai tests
+nyskip   day_start    yrc_start   day_end   yrc_end   interval
+1        0            0           0         0         0
+aa_int_cnt
+0
+csvout    dbout         cdfout
+n         n             n
+soilout   mgtout     hydcon      fdcout
+n         y          n           n
+objects           daily     monthly        yearly          avann
+basin_wb              n           n             n              y
+basin_nb              y           n             n              y
+channel               y           y             n              y

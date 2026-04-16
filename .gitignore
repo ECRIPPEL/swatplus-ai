@@ -65,3 +65,4 @@ desktop.ini
 .env.local
 secrets.toml
 tests/fixtures/private/
+tests/fixtures/txtinout_uru_min/

@@ -1,0 +1,3 @@
+time.sim: minimal synthetic fixture for SWAT+ai tests
+day_start  yrc_start   day_end   yrc_end      step
+1          2000        365       2001         0
