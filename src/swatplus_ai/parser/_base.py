@@ -93,6 +93,13 @@ def parse_int(tok: str, *, path: Path, line_no: int, field: str) -> int:
         raise ParseError(path, line_no, f"expected integer for {field!r}, got {tok!r}") from exc
 
 
+def parse_float(tok: str, *, path: Path, line_no: int, field: str) -> float:
+    try:
+        return float(tok)
+    except ValueError as exc:
+        raise ParseError(path, line_no, f"expected float for {field!r}, got {tok!r}") from exc
+
+
 def parse_yn(tok: str, *, path: Path, line_no: int, field: str) -> bool:
     t = tok.strip().lower()
     if t == "y":
