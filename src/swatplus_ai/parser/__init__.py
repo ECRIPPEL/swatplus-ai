@@ -9,6 +9,13 @@ from swatplus_ai.parser.inputs.hydrology_hyd import (
     parse_hydrology_hyd,
 )
 from swatplus_ai.parser.inputs.landuse_lum import LanduseLum, LanduseLumRow, parse_landuse_lum
+from swatplus_ai.parser.inputs.management_sch import (
+    AutoOp,
+    ManagementSch,
+    ManagementSchedule,
+    ScheduledOp,
+    parse_management_sch,
+)
 from swatplus_ai.parser.inputs.plant_ini import (
     PlantCommunity,
     PlantIni,
@@ -21,6 +28,7 @@ from swatplus_ai.parser.inputs.time_sim import TimeSim, parse_time_sim
 from swatplus_ai.parser.models import ParsedFile
 
 __all__ = [
+    "AutoOp",
     "FileCio",
     "FileCioSection",
     "HruData",
@@ -29,6 +37,8 @@ __all__ = [
     "HydrologyHydRow",
     "LanduseLum",
     "LanduseLumRow",
+    "ManagementSch",
+    "ManagementSchedule",
     "ObjectPrintFlags",
     "ParseError",
     "ParsedFile",
@@ -36,6 +46,7 @@ __all__ = [
     "PlantIni",
     "PlantMember",
     "PrintPrt",
+    "ScheduledOp",
     "Soil",
     "SoilLayer",
     "SoilsSol",
@@ -44,6 +55,7 @@ __all__ = [
     "parse_hru_data",
     "parse_hydrology_hyd",
     "parse_landuse_lum",
+    "parse_management_sch",
     "parse_plant_ini",
     "parse_print_prt",
     "parse_soils_sol",
