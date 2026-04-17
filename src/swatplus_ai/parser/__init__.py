@@ -1,6 +1,7 @@
 """Typed parsers for SWAT+ TxtInOut files."""
 
 from swatplus_ai.parser._base import ParseError
+from swatplus_ai.parser.inputs.codes_bsn import CodesBsn, parse_codes_bsn
 from swatplus_ai.parser.inputs.file_cio import FileCio, FileCioSection, parse_file_cio
 from swatplus_ai.parser.inputs.hru_data import HruData, HruDataRow, parse_hru_data
 from swatplus_ai.parser.inputs.hydrology_hyd import (
@@ -16,6 +17,7 @@ from swatplus_ai.parser.inputs.management_sch import (
     ScheduledOp,
     parse_management_sch,
 )
+from swatplus_ai.parser.inputs.parameters_bsn import ParametersBsn, parse_parameters_bsn
 from swatplus_ai.parser.inputs.plant_ini import (
     PlantCommunity,
     PlantIni,
@@ -41,6 +43,7 @@ from swatplus_ai.parser.models import ParsedFile
 
 __all__ = [
     "AutoOp",
+    "CodesBsn",
     "FileCio",
     "FileCioSection",
     "HruData",
@@ -52,6 +55,7 @@ __all__ = [
     "ManagementSch",
     "ManagementSchedule",
     "ObjectPrintFlags",
+    "ParametersBsn",
     "ParseError",
     "ParsedFile",
     "PlantCommunity",
@@ -69,11 +73,13 @@ __all__ = [
     "WeatherWgnCli",
     "WgnMonth",
     "WgnStation",
+    "parse_codes_bsn",
     "parse_file_cio",
     "parse_hru_data",
     "parse_hydrology_hyd",
     "parse_landuse_lum",
     "parse_management_sch",
+    "parse_parameters_bsn",
     "parse_plant_ini",
     "parse_print_prt",
     "parse_soils_sol",
