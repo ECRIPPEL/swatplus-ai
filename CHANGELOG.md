@@ -15,4 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Parser slice 3 — weather: `weather-sta.cli`, `weather-wgn.cli`, generic `pcp/tmp/slr/hmd/wnd.cli`.
 - Parser slice 4 — management & lookups: `management.sch`, `fertilizer.frt`, `tillage.til`, `pesticide.pes`, `harv/graze/irr/fire/sweep/chem_app.ops`, `cntable.lum`, `cons_practice.lum`, `ovn_table.lum`.
 - Parser slice 5 — connectivity / topology: `hru.con`, `aquifer.con`, `chandeg.con`, `reservoir.con`, `rout_unit.con`, `ls_unit.def`/`.ele`, `rout_unit.def`/`.ele`/`.rtu`, `aqu_catunit.ele`.
-- `TxtInOutProject.read()` orchestrator covering slices 1–5; missing optional databases are tolerated.
+- Parser slice 6 — routing bodies: `aquifer.aqu`, `initial.aqu`, `channel-lte.cha`, `hyd-sed-lte.cha`, `nutrients.cha`, `initial.cha`, `reservoir.res`, `hydrology.res`, `nutrients.res`, `sediment.res`, `initial.res`, `wetland.wet`, `hydrology.wet`. Shared `parse_initial_any` backs the three `initial.{aqu,cha,res}` files.
+- Parser slice 7 (partial) — HRU initial / chemistry: `soil_plant.ini`, `om_water.ini`.
+- Parser slice 8 (partial) — calibration / change: `cal_parms.cal`, `codes.sft`, `wb_parms.sft`, `water_balance.sft`, `plant_gro.sft`, `plant_parms.sft`.
+- Parser slice 9 — decision tables: `lum.dtl`, `res_rel.dtl`, backed by a shared `_decision_table.py` helper. Table count on line 2 is informational; tables are read until EOF so hand-edited files parse correctly.
+- `TxtInOutProject.read()` orchestrator covering slices 1–9; every optional file is tolerated when absent.

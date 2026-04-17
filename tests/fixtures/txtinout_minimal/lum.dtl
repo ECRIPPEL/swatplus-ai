@@ -1,0 +1,16 @@
+lum.dtl: synthetic fixture for swatplus_ai parser tests
+2
+
+name                     conds      alts      acts       !minimal plant/harvest
+pl_hv_basic                  1         1         1
+var                        obj   obj_num           lim_var            lim_op     lim_const      alt1
+phu_base0                  hru         0              null                 -       0.15000         >       !heat units to plant
+act_typ                    obj   obj_num              name            option         const        const2                fp  outcome
+plant                      hru         0             plant              crop       0.00000       0.00000              null  y
+
+name                     conds      alts      acts
+irr_basic                    1         1         1
+var                        obj   obj_num           lim_var            lim_op     lim_const      alt1
+soil_water                 hru         0                fc                 -       0.50000         <
+act_typ                    obj   obj_num              name            option         const        const2                fp  outcome
+irr_demand                 hru         0         sprinkler     sprinkler_ilm      25.00000       0.00000              null  y

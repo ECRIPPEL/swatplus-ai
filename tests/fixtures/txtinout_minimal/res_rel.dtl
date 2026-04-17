@@ -1,0 +1,9 @@
+res_rel.dtl: synthetic fixture for swatplus_ai parser tests
+1
+
+name                     conds      alts      acts
+flood_simple                 1         1         1
+var                        obj   obj_num           lim_var            lim_op     lim_const      alt1
+vol                        res         0              pvol                 *       1.00000         >
+act_typ                    obj   obj_num              name            option         const        const2                fp  outcome
+release                    res         0         over_prin              days      15.00000       0.00000              pvol  y

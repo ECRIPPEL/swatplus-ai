@@ -95,6 +95,12 @@ def test_read_minimal(minimal_project: Path) -> None:
     assert p.plant_gro_sft is not None
     assert p.plant_parms_sft is not None
 
+    # Minimal fixture ships the slice-9 decision tables.
+    assert p.lum_dtl is not None
+    assert len(p.lum_dtl.tables) > 0
+    assert p.res_rel_dtl is not None
+    assert len(p.res_rel_dtl.tables) > 0
+
     # Minimal fixture ships pcp.cli but not the other four observed files.
     assert p.pcp_cli is not None
     assert len(p.pcp_cli.filenames) > 0
@@ -310,5 +316,19 @@ def test_read_absent_slice8_calibration_is_ok(tmp_path: Path, minimal_project: P
     assert p.water_balance_sft is None
     assert p.plant_gro_sft is None
     assert p.plant_parms_sft is None
+    # Required fields still load.
+    assert len(p.hru_data.rows) > 0
+
+
+def test_read_absent_slice9_dtls_is_ok(tmp_path: Path, minimal_project: Path) -> None:
+    # Schedule-only projects and reservoir-free sketches may ship without
+    # either decision-table file.
+    staging = tmp_path / "staging"
+    shutil.copytree(minimal_project, staging)
+    (staging / "lum.dtl").unlink()
+    (staging / "res_rel.dtl").unlink()
+    p = TxtInOutProject.read(staging)
+    assert p.lum_dtl is None
+    assert p.res_rel_dtl is None
     # Required fields still load.
     assert len(p.hru_data.rows) > 0

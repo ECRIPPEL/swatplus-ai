@@ -27,7 +27,10 @@ water states simply don't ship them. Slice 8 calibration / change files
 ``plant_gro.sft``, ``plant_parms.sft``, ``water_balance.sft``,
 ``wb_parms.sft``) are optional for the same reason — a project that
 only runs forward simulations without calibration may ship none of
-them.
+them. Slice 9 decision-table files (``lum.dtl``, ``res_rel.dtl``) are
+optional because projects can drive management through operation
+schedules alone, and reservoir release logic is only present when a
+reservoir is actually modeled.
 """
 
 from __future__ import annotations
@@ -66,6 +69,7 @@ from swatplus_ai.parser.inputs.irr_ops import IrrOps, parse_irr_ops
 from swatplus_ai.parser.inputs.landuse_lum import LanduseLum, parse_landuse_lum
 from swatplus_ai.parser.inputs.ls_unit_def import LsUnitDef, parse_ls_unit_def
 from swatplus_ai.parser.inputs.ls_unit_ele import LsUnitEle, parse_ls_unit_ele
+from swatplus_ai.parser.inputs.lum_dtl import LumDtl, parse_lum_dtl
 from swatplus_ai.parser.inputs.management_sch import ManagementSch, parse_management_sch
 from swatplus_ai.parser.inputs.nutrients_cha import NutrientsCha, parse_nutrients_cha
 from swatplus_ai.parser.inputs.nutrients_res import NutrientsRes, parse_nutrients_res
@@ -79,6 +83,7 @@ from swatplus_ai.parser.inputs.plant_gro_sft import PlantGroSft, parse_plant_gro
 from swatplus_ai.parser.inputs.plant_ini import PlantIni, parse_plant_ini
 from swatplus_ai.parser.inputs.plant_parms_sft import PlantParmsSft, parse_plant_parms_sft
 from swatplus_ai.parser.inputs.print_prt import PrintPrt, parse_print_prt
+from swatplus_ai.parser.inputs.res_rel_dtl import ResRelDtl, parse_res_rel_dtl
 from swatplus_ai.parser.inputs.reservoir_con import ReservoirCon, parse_reservoir_con
 from swatplus_ai.parser.inputs.reservoir_res import ReservoirRes, parse_reservoir_res
 from swatplus_ai.parser.inputs.rout_unit_con import RoutUnitCon, parse_rout_unit_con
@@ -198,6 +203,11 @@ class TxtInOutProject(BaseModel):
     plant_gro_sft: PlantGroSft | None
     plant_parms_sft: PlantParmsSft | None
 
+    # Decision tables (slice 9) — land-use management rules and
+    # reservoir / wetland release policies as condition/action grids.
+    lum_dtl: LumDtl | None
+    res_rel_dtl: ResRelDtl | None
+
     # Weather wiring
     weather_sta: WeatherStaCli
     weather_wgn: WeatherWgnCli
@@ -278,6 +288,8 @@ class TxtInOutProject(BaseModel):
             water_balance_sft=_optional(folder, "water_balance.sft", parse_water_balance_sft),
             plant_gro_sft=_optional(folder, "plant_gro.sft", parse_plant_gro_sft),
             plant_parms_sft=_optional(folder, "plant_parms.sft", parse_plant_parms_sft),
+            lum_dtl=_optional(folder, "lum.dtl", parse_lum_dtl),
+            res_rel_dtl=_optional(folder, "res_rel.dtl", parse_res_rel_dtl),
             weather_sta=parse_weather_sta_cli(folder / "weather-sta.cli"),
             weather_wgn=parse_weather_wgn_cli(folder / "weather-wgn.cli"),
             pcp_cli=_optional(folder, "pcp.cli", parse_weather_cli),

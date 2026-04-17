@@ -1,6 +1,12 @@
 """Typed parsers for SWAT+ TxtInOut files."""
 
 from swatplus_ai.parser._base import ParseError
+from swatplus_ai.parser.inputs._decision_table import (
+    DecisionTable,
+    DtlAction,
+    DtlCondition,
+    parse_decision_tables,
+)
 from swatplus_ai.parser.inputs.aqu_catunit_ele import (
     AquCatunitEle,
     AquCatunitEleRow,
@@ -68,6 +74,7 @@ from swatplus_ai.parser.inputs.irr_ops import IrrOps, IrrOpsRow, parse_irr_ops
 from swatplus_ai.parser.inputs.landuse_lum import LanduseLum, LanduseLumRow, parse_landuse_lum
 from swatplus_ai.parser.inputs.ls_unit_def import LsUnitDef, LsUnitDefRow, parse_ls_unit_def
 from swatplus_ai.parser.inputs.ls_unit_ele import LsUnitEle, LsUnitEleRow, parse_ls_unit_ele
+from swatplus_ai.parser.inputs.lum_dtl import LumDtl, parse_lum_dtl
 from swatplus_ai.parser.inputs.management_sch import (
     AutoOp,
     ManagementSch,
@@ -122,6 +129,7 @@ from swatplus_ai.parser.inputs.plant_parms_sft import (
     parse_plant_parms_sft,
 )
 from swatplus_ai.parser.inputs.print_prt import ObjectPrintFlags, PrintPrt, parse_print_prt
+from swatplus_ai.parser.inputs.res_rel_dtl import ResRelDtl, parse_res_rel_dtl
 from swatplus_ai.parser.inputs.reservoir_con import (
     ReservoirCon,
     ReservoirConRow,
@@ -213,6 +221,9 @@ __all__ = [
     "ConConnection",
     "ConsPracticeLum",
     "ConsPracticeLumRow",
+    "DecisionTable",
+    "DtlAction",
+    "DtlCondition",
     "FertilizerFrt",
     "FertilizerFrtRow",
     "FileCio",
@@ -245,6 +256,7 @@ __all__ = [
     "LsUnitDefRow",
     "LsUnitEle",
     "LsUnitEleRow",
+    "LumDtl",
     "ManagementSch",
     "ManagementSchedule",
     "NutrientsCha",
@@ -274,6 +286,7 @@ __all__ = [
     "PlantParmsSftGroup",
     "PlantParmsSftRow",
     "PrintPrt",
+    "ResRelDtl",
     "ReservoirCon",
     "ReservoirConRow",
     "ReservoirRes",
@@ -326,6 +339,7 @@ __all__ = [
     "parse_codes_bsn",
     "parse_codes_sft",
     "parse_cons_practice_lum",
+    "parse_decision_tables",
     "parse_fertilizer_frt",
     "parse_file_cio",
     "parse_fire_ops",
@@ -342,6 +356,7 @@ __all__ = [
     "parse_landuse_lum",
     "parse_ls_unit_def",
     "parse_ls_unit_ele",
+    "parse_lum_dtl",
     "parse_management_sch",
     "parse_nutrients_cha",
     "parse_nutrients_res",
@@ -355,6 +370,7 @@ __all__ = [
     "parse_plant_ini",
     "parse_plant_parms_sft",
     "parse_print_prt",
+    "parse_res_rel_dtl",
     "parse_reservoir_con",
     "parse_reservoir_res",
     "parse_rout_unit_con",
