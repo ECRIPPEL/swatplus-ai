@@ -19,7 +19,10 @@ aren't actually referenced. Slice 6 routing-body files (``aquifer.aqu``,
 ``*.res`` set, ``wetland.wet``, ``hydrology.wet``, and the three
 ``initial.{aqu,cha,res}`` files) are likewise optional — a channels-only
 project has no reservoirs; an HRU-only sketch has no routing bodies
-at all.
+at all. Slice 7 HRU initial / chemistry files (``soil_plant.ini``,
+``om_water.ini``) are optional for the same reason: projects that
+don't use HRU soil/plant initial-condition sets or organic-matter
+water states simply don't ship them.
 """
 
 from __future__ import annotations
@@ -61,6 +64,7 @@ from swatplus_ai.parser.inputs.nutrients_cha import NutrientsCha, parse_nutrient
 from swatplus_ai.parser.inputs.nutrients_res import NutrientsRes, parse_nutrients_res
 from swatplus_ai.parser.inputs.nutrients_sol import NutrientsSol, parse_nutrients_sol
 from swatplus_ai.parser.inputs.object_cnt import ObjectCnt, parse_object_cnt
+from swatplus_ai.parser.inputs.om_water_ini import OmWaterIni, parse_om_water_ini
 from swatplus_ai.parser.inputs.ovn_table_lum import OvnTableLum, parse_ovn_table_lum
 from swatplus_ai.parser.inputs.parameters_bsn import ParametersBsn, parse_parameters_bsn
 from swatplus_ai.parser.inputs.pesticide_pes import PesticidePes, parse_pesticide_pes
@@ -73,6 +77,7 @@ from swatplus_ai.parser.inputs.rout_unit_def import RoutUnitDef, parse_rout_unit
 from swatplus_ai.parser.inputs.rout_unit_ele import RoutUnitEle, parse_rout_unit_ele
 from swatplus_ai.parser.inputs.rout_unit_rtu import RoutUnitRtu, parse_rout_unit_rtu
 from swatplus_ai.parser.inputs.sediment_res import SedimentRes, parse_sediment_res
+from swatplus_ai.parser.inputs.soil_plant_ini import SoilPlantIni, parse_soil_plant_ini
 from swatplus_ai.parser.inputs.soils_sol import SoilsSol, parse_soils_sol
 from swatplus_ai.parser.inputs.sweep_ops import SweepOps, parse_sweep_ops
 from swatplus_ai.parser.inputs.tillage_til import TillageTil, parse_tillage_til
@@ -166,6 +171,12 @@ class TxtInOutProject(BaseModel):
     wetland_wet: WetlandWet | None
     hydrology_wet: HydrologyWet | None
 
+    # HRU initial / chemistry (slice 7) — soil/plant initial-condition
+    # sets referenced from hru-data.hru, and organic-matter/water
+    # initial states referenced from the initial.* files.
+    soil_plant_ini: SoilPlantIni | None
+    om_water_ini: OmWaterIni | None
+
     # Weather wiring
     weather_sta: WeatherStaCli
     weather_wgn: WeatherWgnCli
@@ -238,6 +249,8 @@ class TxtInOutProject(BaseModel):
             initial_res=_optional(folder, "initial.res", parse_initial_any),
             wetland_wet=_optional(folder, "wetland.wet", parse_wetland_wet),
             hydrology_wet=_optional(folder, "hydrology.wet", parse_hydrology_wet),
+            soil_plant_ini=_optional(folder, "soil_plant.ini", parse_soil_plant_ini),
+            om_water_ini=_optional(folder, "om_water.ini", parse_om_water_ini),
             weather_sta=parse_weather_sta_cli(folder / "weather-sta.cli"),
             weather_wgn=parse_weather_wgn_cli(folder / "weather-wgn.cli"),
             pcp_cli=_optional(folder, "pcp.cli", parse_weather_cli),

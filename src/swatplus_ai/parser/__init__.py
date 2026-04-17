@@ -85,6 +85,7 @@ from swatplus_ai.parser.inputs.nutrients_sol import (
     parse_nutrients_sol,
 )
 from swatplus_ai.parser.inputs.object_cnt import ObjectCnt, parse_object_cnt
+from swatplus_ai.parser.inputs.om_water_ini import OmWaterIni, OmWaterIniRow, parse_om_water_ini
 from swatplus_ai.parser.inputs.ovn_table_lum import (
     OvnTableLum,
     OvnTableLumRow,
@@ -134,6 +135,11 @@ from swatplus_ai.parser.inputs.rout_unit_rtu import (
     parse_rout_unit_rtu,
 )
 from swatplus_ai.parser.inputs.sediment_res import SedimentRes, SedimentResRow, parse_sediment_res
+from swatplus_ai.parser.inputs.soil_plant_ini import (
+    SoilPlantIni,
+    SoilPlantIniRow,
+    parse_soil_plant_ini,
+)
 from swatplus_ai.parser.inputs.soils_sol import Soil, SoilLayer, SoilsSol, parse_soils_sol
 from swatplus_ai.parser.inputs.sweep_ops import SweepOps, SweepOpsRow, parse_sweep_ops
 from swatplus_ai.parser.inputs.tillage_til import TillageTil, TillageTilRow, parse_tillage_til
@@ -221,6 +227,8 @@ __all__ = [
     "NutrientsSolRow",
     "ObjectCnt",
     "ObjectPrintFlags",
+    "OmWaterIni",
+    "OmWaterIniRow",
     "OvnTableLum",
     "OvnTableLumRow",
     "ParametersBsn",
@@ -249,6 +257,8 @@ __all__ = [
     "SedimentResRow",
     "Soil",
     "SoilLayer",
+    "SoilPlantIni",
+    "SoilPlantIniRow",
     "SoilsSol",
     "SweepOps",
     "SweepOpsRow",
@@ -296,6 +306,7 @@ __all__ = [
     "parse_nutrients_res",
     "parse_nutrients_sol",
     "parse_object_cnt",
+    "parse_om_water_ini",
     "parse_ovn_table_lum",
     "parse_parameters_bsn",
     "parse_pesticide_pes",
@@ -308,6 +319,7 @@ __all__ = [
     "parse_rout_unit_ele",
     "parse_rout_unit_rtu",
     "parse_sediment_res",
+    "parse_soil_plant_ini",
     "parse_soils_sol",
     "parse_sweep_ops",
     "parse_tillage_til",

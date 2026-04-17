@@ -78,6 +78,12 @@ def test_read_minimal(minimal_project: Path) -> None:
     assert p.wetland_wet is not None
     assert p.hydrology_wet is not None
 
+    # Minimal fixture ships the slice-7 HRU initial / chemistry files.
+    assert p.soil_plant_ini is not None
+    assert p.soil_plant_ini.by_name("soilplant1") is not None
+    assert p.om_water_ini is not None
+    assert p.om_water_ini.by_name("no_init") is not None
+
     # Minimal fixture ships pcp.cli but not the other four observed files.
     assert p.pcp_cli is not None
     assert len(p.pcp_cli.filenames) > 0
@@ -255,5 +261,19 @@ def test_read_absent_slice4_dbs_is_ok(tmp_path: Path, minimal_project: Path) -> 
     assert p.cntable_lum is None
     assert p.cons_practice_lum is None
     assert p.ovn_table_lum is None
+    # Required fields still load.
+    assert len(p.hru_data.rows) > 0
+
+
+def test_read_absent_slice7_hru_initial_is_ok(tmp_path: Path, minimal_project: Path) -> None:
+    # Projects that don't use HRU soil/plant initial-condition sets or
+    # organic-matter water states may ship without these files.
+    staging = tmp_path / "staging"
+    shutil.copytree(minimal_project, staging)
+    (staging / "soil_plant.ini").unlink()
+    (staging / "om_water.ini").unlink()
+    p = TxtInOutProject.read(staging)
+    assert p.soil_plant_ini is None
+    assert p.om_water_ini is None
     # Required fields still load.
     assert len(p.hru_data.rows) > 0
