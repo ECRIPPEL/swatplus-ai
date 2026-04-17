@@ -1,0 +1,4 @@
+weather-sta.cli: minimal synthetic fixture for SWAT+ai tests
+name              wgn              pcp              tmp              slr              hmd              wnd              pet         atmo_dep
+sta001          wgn001       sta001.pcp              sim              sim              sim              sim             null             null
+sta002          wgn002              sim              sim              sim              sim              sim             null             null
