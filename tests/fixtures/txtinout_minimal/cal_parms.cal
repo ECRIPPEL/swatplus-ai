@@ -1,0 +1,6 @@
+cal_parms.cal: synthetic fixture for swatplus_ai parser tests
+3
+name    obj_typ   abs_min   abs_max   units
+cn2     hru       35.00000  95.00000  null
+esco    hru       0.00000   1.00000   null
+alpha   aqu       0.00000   1.00000   days

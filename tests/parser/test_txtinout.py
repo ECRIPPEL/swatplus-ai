@@ -84,6 +84,17 @@ def test_read_minimal(minimal_project: Path) -> None:
     assert p.om_water_ini is not None
     assert p.om_water_ini.by_name("no_init") is not None
 
+    # Minimal fixture ships the slice-8 calibration / change files.
+    assert p.cal_parms_cal is not None
+    assert len(p.cal_parms_cal.rows) > 0
+    assert p.codes_sft is not None
+    assert p.wb_parms_sft is not None
+    assert len(p.wb_parms_sft.rows) > 0
+    assert p.water_balance_sft is not None
+    assert len(p.water_balance_sft.groups) > 0
+    assert p.plant_gro_sft is not None
+    assert p.plant_parms_sft is not None
+
     # Minimal fixture ships pcp.cli but not the other four observed files.
     assert p.pcp_cli is not None
     assert len(p.pcp_cli.filenames) > 0
@@ -275,5 +286,29 @@ def test_read_absent_slice7_hru_initial_is_ok(tmp_path: Path, minimal_project: P
     p = TxtInOutProject.read(staging)
     assert p.soil_plant_ini is None
     assert p.om_water_ini is None
+    # Required fields still load.
+    assert len(p.hru_data.rows) > 0
+
+
+def test_read_absent_slice8_calibration_is_ok(tmp_path: Path, minimal_project: Path) -> None:
+    # Forward-sim-only projects may ship without any calibration files.
+    staging = tmp_path / "staging"
+    shutil.copytree(minimal_project, staging)
+    for name in (
+        "cal_parms.cal",
+        "codes.sft",
+        "wb_parms.sft",
+        "water_balance.sft",
+        "plant_gro.sft",
+        "plant_parms.sft",
+    ):
+        (staging / name).unlink()
+    p = TxtInOutProject.read(staging)
+    assert p.cal_parms_cal is None
+    assert p.codes_sft is None
+    assert p.wb_parms_sft is None
+    assert p.water_balance_sft is None
+    assert p.plant_gro_sft is None
+    assert p.plant_parms_sft is None
     # Required fields still load.
     assert len(p.hru_data.rows) > 0

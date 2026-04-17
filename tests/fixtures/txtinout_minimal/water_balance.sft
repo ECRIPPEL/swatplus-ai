@@ -1,0 +1,6 @@
+water_balance.sft: synthetic fixture for swatplus_ai parser tests
+1
+name   num
+basin  1
+    name    surq_rto  latq_rto  perc_rto  et_rto   tileq_rto  pet     sed   wyr   bfr   solp
+    basin   18.10000  0.00000   33.80000  48.10000 0.00000    60.000  0.0   0.0   0.0   0.0

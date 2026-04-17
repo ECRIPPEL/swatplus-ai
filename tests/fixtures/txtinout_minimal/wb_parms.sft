@@ -1,0 +1,5 @@
+wb_parms.sft: synthetic fixture for swatplus_ai parser tests
+2
+name   chg_typ  neg      pos      lo       up
+cn2    pctchg   -10.0    5.0      35.0     95.0
+esco   abschg   -1.0     1.0      0.85     1.0

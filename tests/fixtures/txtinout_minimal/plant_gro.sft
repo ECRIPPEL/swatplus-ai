@@ -1,0 +1,5 @@
+plant_gro.sft: synthetic fixture for swatplus_ai parser tests
+1
+name   num
+basin  0
+    name    yld    npp    lai_mx    wstress   astress   tstress

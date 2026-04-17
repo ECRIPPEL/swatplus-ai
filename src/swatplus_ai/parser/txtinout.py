@@ -22,7 +22,12 @@ project has no reservoirs; an HRU-only sketch has no routing bodies
 at all. Slice 7 HRU initial / chemistry files (``soil_plant.ini``,
 ``om_water.ini``) are optional for the same reason: projects that
 don't use HRU soil/plant initial-condition sets or organic-matter
-water states simply don't ship them.
+water states simply don't ship them. Slice 8 calibration / change files
+(``cal_parms.cal`` plus the soft-calibration set ``codes.sft``,
+``plant_gro.sft``, ``plant_parms.sft``, ``water_balance.sft``,
+``wb_parms.sft``) are optional for the same reason — a project that
+only runs forward simulations without calibration may ship none of
+them.
 """
 
 from __future__ import annotations
@@ -37,11 +42,13 @@ from swatplus_ai.parser._base import ParseError
 from swatplus_ai.parser.inputs.aqu_catunit_ele import AquCatunitEle, parse_aqu_catunit_ele
 from swatplus_ai.parser.inputs.aquifer_aqu import AquiferAqu, parse_aquifer_aqu
 from swatplus_ai.parser.inputs.aquifer_con import AquiferCon, parse_aquifer_con
+from swatplus_ai.parser.inputs.cal_parms_cal import CalParmsCal, parse_cal_parms_cal
 from swatplus_ai.parser.inputs.chandeg_con import ChandegCon, parse_chandeg_con
 from swatplus_ai.parser.inputs.channel_lte_cha import ChannelLteCha, parse_channel_lte_cha
 from swatplus_ai.parser.inputs.chem_app_ops import ChemAppOps, parse_chem_app_ops
 from swatplus_ai.parser.inputs.cntable_lum import CnTableLum, parse_cntable_lum
 from swatplus_ai.parser.inputs.codes_bsn import CodesBsn, parse_codes_bsn
+from swatplus_ai.parser.inputs.codes_sft import CodesSft, parse_codes_sft
 from swatplus_ai.parser.inputs.cons_practice_lum import ConsPracticeLum, parse_cons_practice_lum
 from swatplus_ai.parser.inputs.fertilizer_frt import FertilizerFrt, parse_fertilizer_frt
 from swatplus_ai.parser.inputs.file_cio import FileCio, parse_file_cio
@@ -68,7 +75,9 @@ from swatplus_ai.parser.inputs.om_water_ini import OmWaterIni, parse_om_water_in
 from swatplus_ai.parser.inputs.ovn_table_lum import OvnTableLum, parse_ovn_table_lum
 from swatplus_ai.parser.inputs.parameters_bsn import ParametersBsn, parse_parameters_bsn
 from swatplus_ai.parser.inputs.pesticide_pes import PesticidePes, parse_pesticide_pes
+from swatplus_ai.parser.inputs.plant_gro_sft import PlantGroSft, parse_plant_gro_sft
 from swatplus_ai.parser.inputs.plant_ini import PlantIni, parse_plant_ini
+from swatplus_ai.parser.inputs.plant_parms_sft import PlantParmsSft, parse_plant_parms_sft
 from swatplus_ai.parser.inputs.print_prt import PrintPrt, parse_print_prt
 from swatplus_ai.parser.inputs.reservoir_con import ReservoirCon, parse_reservoir_con
 from swatplus_ai.parser.inputs.reservoir_res import ReservoirRes, parse_reservoir_res
@@ -83,6 +92,8 @@ from swatplus_ai.parser.inputs.sweep_ops import SweepOps, parse_sweep_ops
 from swatplus_ai.parser.inputs.tillage_til import TillageTil, parse_tillage_til
 from swatplus_ai.parser.inputs.time_sim import TimeSim, parse_time_sim
 from swatplus_ai.parser.inputs.topography_hyd import TopographyHyd, parse_topography_hyd
+from swatplus_ai.parser.inputs.water_balance_sft import WaterBalanceSft, parse_water_balance_sft
+from swatplus_ai.parser.inputs.wb_parms_sft import WbParmsSft, parse_wb_parms_sft
 from swatplus_ai.parser.inputs.weather_cli import WeatherCli, parse_weather_cli
 from swatplus_ai.parser.inputs.weather_sta_cli import WeatherStaCli, parse_weather_sta_cli
 from swatplus_ai.parser.inputs.weather_wgn_cli import WeatherWgnCli, parse_weather_wgn_cli
@@ -177,6 +188,16 @@ class TxtInOutProject(BaseModel):
     soil_plant_ini: SoilPlantIni | None
     om_water_ini: OmWaterIni | None
 
+    # Calibration / change (slice 8) — hard-cal registry plus the
+    # soft-calibration switches, parameter bounds, and basin-scoped
+    # water-balance and plant-growth targets.
+    cal_parms_cal: CalParmsCal | None
+    codes_sft: CodesSft | None
+    wb_parms_sft: WbParmsSft | None
+    water_balance_sft: WaterBalanceSft | None
+    plant_gro_sft: PlantGroSft | None
+    plant_parms_sft: PlantParmsSft | None
+
     # Weather wiring
     weather_sta: WeatherStaCli
     weather_wgn: WeatherWgnCli
@@ -251,6 +272,12 @@ class TxtInOutProject(BaseModel):
             hydrology_wet=_optional(folder, "hydrology.wet", parse_hydrology_wet),
             soil_plant_ini=_optional(folder, "soil_plant.ini", parse_soil_plant_ini),
             om_water_ini=_optional(folder, "om_water.ini", parse_om_water_ini),
+            cal_parms_cal=_optional(folder, "cal_parms.cal", parse_cal_parms_cal),
+            codes_sft=_optional(folder, "codes.sft", parse_codes_sft),
+            wb_parms_sft=_optional(folder, "wb_parms.sft", parse_wb_parms_sft),
+            water_balance_sft=_optional(folder, "water_balance.sft", parse_water_balance_sft),
+            plant_gro_sft=_optional(folder, "plant_gro.sft", parse_plant_gro_sft),
+            plant_parms_sft=_optional(folder, "plant_parms.sft", parse_plant_parms_sft),
             weather_sta=parse_weather_sta_cli(folder / "weather-sta.cli"),
             weather_wgn=parse_weather_wgn_cli(folder / "weather-wgn.cli"),
             pcp_cli=_optional(folder, "pcp.cli", parse_weather_cli),

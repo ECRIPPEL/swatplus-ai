@@ -8,6 +8,11 @@ from swatplus_ai.parser.inputs.aqu_catunit_ele import (
 )
 from swatplus_ai.parser.inputs.aquifer_aqu import AquiferAqu, AquiferAquRow, parse_aquifer_aqu
 from swatplus_ai.parser.inputs.aquifer_con import AquiferCon, AquiferConRow, parse_aquifer_con
+from swatplus_ai.parser.inputs.cal_parms_cal import (
+    CalParmsCal,
+    CalParmsCalRow,
+    parse_cal_parms_cal,
+)
 from swatplus_ai.parser.inputs.chandeg_con import ChandegCon, ChandegConRow, parse_chandeg_con
 from swatplus_ai.parser.inputs.channel_lte_cha import (
     ChannelLteCha,
@@ -21,6 +26,7 @@ from swatplus_ai.parser.inputs.chem_app_ops import (
 )
 from swatplus_ai.parser.inputs.cntable_lum import CnTableLum, CnTableLumRow, parse_cntable_lum
 from swatplus_ai.parser.inputs.codes_bsn import CodesBsn, parse_codes_bsn
+from swatplus_ai.parser.inputs.codes_sft import CodesSft, parse_codes_sft
 from swatplus_ai.parser.inputs.cons_practice_lum import (
     ConsPracticeLum,
     ConsPracticeLumRow,
@@ -97,11 +103,23 @@ from swatplus_ai.parser.inputs.pesticide_pes import (
     PesticidePesRow,
     parse_pesticide_pes,
 )
+from swatplus_ai.parser.inputs.plant_gro_sft import (
+    PlantGroSft,
+    PlantGroSftGroup,
+    PlantGroSftTarget,
+    parse_plant_gro_sft,
+)
 from swatplus_ai.parser.inputs.plant_ini import (
     PlantCommunity,
     PlantIni,
     PlantMember,
     parse_plant_ini,
+)
+from swatplus_ai.parser.inputs.plant_parms_sft import (
+    PlantParmsSft,
+    PlantParmsSftGroup,
+    PlantParmsSftRow,
+    parse_plant_parms_sft,
 )
 from swatplus_ai.parser.inputs.print_prt import ObjectPrintFlags, PrintPrt, parse_print_prt
 from swatplus_ai.parser.inputs.reservoir_con import (
@@ -149,6 +167,13 @@ from swatplus_ai.parser.inputs.topography_hyd import (
     TopographyHydRow,
     parse_topography_hyd,
 )
+from swatplus_ai.parser.inputs.water_balance_sft import (
+    WaterBalanceSft,
+    WaterBalanceSftGroup,
+    WaterBalanceSftTarget,
+    parse_water_balance_sft,
+)
+from swatplus_ai.parser.inputs.wb_parms_sft import WbParmsSft, WbParmsSftRow, parse_wb_parms_sft
 from swatplus_ai.parser.inputs.weather_cli import WeatherCli, parse_weather_cli
 from swatplus_ai.parser.inputs.weather_sta_cli import (
     WeatherStaCli,
@@ -173,6 +198,8 @@ __all__ = [
     "AquiferCon",
     "AquiferConRow",
     "AutoOp",
+    "CalParmsCal",
+    "CalParmsCalRow",
     "ChandegCon",
     "ChandegConRow",
     "ChannelLteCha",
@@ -182,6 +209,7 @@ __all__ = [
     "CnTableLum",
     "CnTableLumRow",
     "CodesBsn",
+    "CodesSft",
     "ConConnection",
     "ConsPracticeLum",
     "ConsPracticeLumRow",
@@ -237,8 +265,14 @@ __all__ = [
     "PesticidePes",
     "PesticidePesRow",
     "PlantCommunity",
+    "PlantGroSft",
+    "PlantGroSftGroup",
+    "PlantGroSftTarget",
     "PlantIni",
     "PlantMember",
+    "PlantParmsSft",
+    "PlantParmsSftGroup",
+    "PlantParmsSftRow",
     "PrintPrt",
     "ReservoirCon",
     "ReservoirConRow",
@@ -268,6 +302,11 @@ __all__ = [
     "TopographyHyd",
     "TopographyHydRow",
     "TxtInOutProject",
+    "WaterBalanceSft",
+    "WaterBalanceSftGroup",
+    "WaterBalanceSftTarget",
+    "WbParmsSft",
+    "WbParmsSftRow",
     "WeatherCli",
     "WeatherStaCli",
     "WeatherStaCliRow",
@@ -279,11 +318,13 @@ __all__ = [
     "parse_aqu_catunit_ele",
     "parse_aquifer_aqu",
     "parse_aquifer_con",
+    "parse_cal_parms_cal",
     "parse_chandeg_con",
     "parse_channel_lte_cha",
     "parse_chem_app_ops",
     "parse_cntable_lum",
     "parse_codes_bsn",
+    "parse_codes_sft",
     "parse_cons_practice_lum",
     "parse_fertilizer_frt",
     "parse_file_cio",
@@ -310,7 +351,9 @@ __all__ = [
     "parse_ovn_table_lum",
     "parse_parameters_bsn",
     "parse_pesticide_pes",
+    "parse_plant_gro_sft",
     "parse_plant_ini",
+    "parse_plant_parms_sft",
     "parse_print_prt",
     "parse_reservoir_con",
     "parse_reservoir_res",
@@ -325,6 +368,8 @@ __all__ = [
     "parse_tillage_til",
     "parse_time_sim",
     "parse_topography_hyd",
+    "parse_water_balance_sft",
+    "parse_wb_parms_sft",
     "parse_weather_cli",
     "parse_weather_sta_cli",
     "parse_weather_wgn_cli",

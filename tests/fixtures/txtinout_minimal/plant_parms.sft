@@ -1,0 +1,5 @@
+plant_parms.sft: synthetic fixture for swatplus_ai parser tests
+1
+name   plants  parms  nspu
+basin  0       0      0
+    var   name    init   chg_typ   neg   pos   lo   up
