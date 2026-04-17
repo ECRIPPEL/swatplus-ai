@@ -1,0 +1,4 @@
+tillage.til: minimal synthetic fixture for SWAT+ai tests
+name mix_eff mix_dp rough ridge_ht ridge_sp description
+fallplow 0.95000 150.00000 75.00000 0.00000 0.00000 genericfallplow
+sprgplow 0.50000 125.00000 50.00000 0.00000 0.00000

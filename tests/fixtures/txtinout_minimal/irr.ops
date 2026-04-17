@@ -1,0 +1,4 @@
+irr.ops: minimal synthetic fixture for SWAT+ai tests
+name amt_mm eff_frac sumq_frac dep_sub salt_ppm no3_ppm po4_ppm description
+sprinkler_med 25.00000 0.85000 0.00000 0.00000 100.00000 20.00000 1.00000 sprinkler
+sprinkler_high 40.00000 0.80000 0.00000 0.00000 100.00000 20.00000 1.00000

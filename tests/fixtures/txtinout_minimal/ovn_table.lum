@@ -1,0 +1,4 @@
+ovn_table.lum: minimal synthetic fixture for SWAT+ai tests
+name ovn_mean ovn_min ovn_max description
+fallow_nores 0.01000 0.00800 0.01200 Fallow_no_residue
+convtill_nores 0.09000 0.06000 0.12000

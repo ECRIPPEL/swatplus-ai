@@ -66,3 +66,11 @@ desktop.ini
 secrets.toml
 tests/fixtures/private/
 tests/fixtures/txtinout_uru_min/
+
+# --- Parallel-session handoff notes (local only) ---
+handoff_*.md
+
+# --- Local scratch (not committed) ---
+.git-commit-msg*.tmp
+SHARED_CONTRACTS.md
+handoff_*.md

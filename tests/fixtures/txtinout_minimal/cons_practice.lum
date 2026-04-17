@@ -1,0 +1,4 @@
+cons_practice.lum: minimal synthetic fixture for SWAT+ai tests
+name usle_p slp_len_max description
+up_down_slope 1.00000 121.00000 Up_and_down_slope
+cross_slope 0.75000 121.00000

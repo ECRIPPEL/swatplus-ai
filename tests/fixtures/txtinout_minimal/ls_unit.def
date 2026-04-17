@@ -1,0 +1,4 @@
+ls_unit.def: minimal synthetic fixture for SWAT+ai tests
+1
+      id              name          area  elem_tot  elements
+       1           rtu001   16565.21021         2         1        -2

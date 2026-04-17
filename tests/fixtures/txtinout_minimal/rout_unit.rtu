@@ -1,0 +1,3 @@
+rout_unit.rtu: minimal synthetic fixture for SWAT+ai tests
+      id              name            define               dlr              topo             field
+       1           rtu001            rtu001              null         toportu001            fld001

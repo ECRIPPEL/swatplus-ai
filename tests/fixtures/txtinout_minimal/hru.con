@@ -1,0 +1,4 @@
+hru.con: minimal synthetic fixture for SWAT+ai tests
+      id  name                gis_id          area           lat           lon          elev       hru               wst       cst      ovfl      rule   out_tot
+       1  hru00001                 1    8539.81964     -26.49376     -52.71770     696.06188         1            sta001         0         0         0         0
+       2  hru00002                 2    9699.48441     -26.48499     -52.72311     691.77192         2            sta001         0         0         0         0

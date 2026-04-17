@@ -1,0 +1,3 @@
+reservoir.con: minimal synthetic fixture for SWAT+ai tests
+      id  name                gis_id          area           lat           lon          elev       res               wst       cst      ovfl      rule   out_tot       obj_typ    obj_id       hyd_typ          frac
+       1  res001                   0    8000.00000     -27.11890     -53.00920     354.00000         1            sta001         0         0         0         1           sdc         1           tot       1.00000

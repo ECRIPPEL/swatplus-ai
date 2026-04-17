@@ -21,3 +21,20 @@ class ParsedFile(BaseModel):
 
     source_path: Path
     title: str
+
+
+class ConConnection(BaseModel):
+    """One outflow connection from a ``*.con`` spatial-object row.
+
+    Spatial objects (aquifers, channels, reservoirs, routing units) declare
+    their downstream receivers as repeated ``(obj_typ, obj_id, hyd_typ,
+    frac)`` 4-tuples after the base row fields. ``out_tot`` on the parent
+    row gives the exact number of connections expected.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    obj_typ: str
+    obj_id: int
+    hyd_typ: str
+    frac: float

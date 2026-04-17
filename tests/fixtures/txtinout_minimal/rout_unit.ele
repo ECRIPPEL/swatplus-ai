@@ -1,0 +1,4 @@
+rout_unit.ele: minimal synthetic fixture for SWAT+ai tests
+      id  name                   obj_typ    obj_id          frac               dlr
+       1  hru00001                   hru         1       0.50000                 0
+       2  hru00002                   hru         2       0.50000                 0

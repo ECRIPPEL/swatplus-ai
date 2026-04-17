@@ -1,0 +1,4 @@
+chem_app.ops: minimal synthetic fixture for SWAT+ai tests
+name chem_form app_typ app_eff foliar_eff inject_dp surf_frac drift_pot aerial_unif description
+broadcast solid spread 0.90000 0.00000 0.00000 1.00000 0.00000 1.00000 broadcast_method
+band solid spread 0.90000 0.00000 0.00000 1.00000 0.00000 0.50000

@@ -1,0 +1,4 @@
+ls_unit.ele: minimal synthetic fixture for SWAT+ai tests
+      id  name                   obj_typ  obj_typ_no      bsn_frac      sub_frac      reg_frac
+       1  hru00001                   hru           1       0.50000       1.00000       0.00000
+       2  hru00002                   hru           2       0.50000       1.00000       0.00000

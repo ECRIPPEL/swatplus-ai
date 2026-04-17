@@ -1,0 +1,5 @@
+topography.hyd: minimal synthetic fixture for SWAT+ai tests
+name slp slp_len lat_len dist_cha depos
+topohru00001 0.10000 90.00000 90.00000 121.00000 0.00000
+topohru00002 0.05000 60.00000 60.00000 121.00000 0.00000
+toportu001 0.08000 121.00000 121.00000 121.00000 0.00000
