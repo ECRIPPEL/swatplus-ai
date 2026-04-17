@@ -1,0 +1,4 @@
+landuse.lum: minimal synthetic fixture for SWAT+ai tests
+name                         cal_group          plnt_com                                        mgt               cn2         cons_prac             urban            urb_ro           ov_mann              tile               sep               vfs              grww               bmp
+frse_lum                          null         frse_comm                                       null            wood_f     up_down_slope              null              null      forest_heavy              null              null              null              null              null
+corn_lum                          null         corn_comm                                   corn_rot        rc_strow_g       cross_slope              null              null      convtill_res              null              null              null              null              null
