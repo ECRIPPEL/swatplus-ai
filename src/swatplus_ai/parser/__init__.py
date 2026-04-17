@@ -31,6 +31,12 @@ from swatplus_ai.parser.inputs.weather_sta_cli import (
     WeatherStaCliRow,
     parse_weather_sta_cli,
 )
+from swatplus_ai.parser.inputs.weather_wgn_cli import (
+    WeatherWgnCli,
+    WgnMonth,
+    WgnStation,
+    parse_weather_wgn_cli,
+)
 from swatplus_ai.parser.models import ParsedFile
 
 __all__ = [
@@ -60,6 +66,9 @@ __all__ = [
     "WeatherCli",
     "WeatherStaCli",
     "WeatherStaCliRow",
+    "WeatherWgnCli",
+    "WgnMonth",
+    "WgnStation",
     "parse_file_cio",
     "parse_hru_data",
     "parse_hydrology_hyd",
@@ -71,4 +80,5 @@ __all__ = [
     "parse_time_sim",
     "parse_weather_cli",
     "parse_weather_sta_cli",
+    "parse_weather_wgn_cli",
 ]
