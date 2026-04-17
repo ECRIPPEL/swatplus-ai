@@ -1,0 +1,3 @@
+nutrients.cha: synthetic minimal fixture
+name plt_n ptl_p alg_stl ben_disp ben_nh3n ptln_stl ptlp_stl cst_stl ben_cst cbn_bod_co air_rt cbn_bod_stl ben_bod bact_die cst_decay nh3n_no2n no2n_no3n ptln_nh3n ptlp_solp q2e_lt q2e_alg chla_alg alg_n alg_p alg_o2_prod alg_o2_resp o2_nh3n o2_no2n alg_grow alg_resp slr_act lt_co const_n const_p lt_nonalg alg_shd_l alg_shd_nl nh3_pref description
+nutcha1 0.0 0.0 1.0 0.05 0.5 0.05 0.05 2.5 2.5 1.71 50.0 0.36 2.0 2.0 1.71 0.55 1.1 0.21 0.35 2 2 50.0 0.08 0.015 1.6 2.0 3.5 1.07 2.0 2.5 0.3 0.75 0.02 0.025 1.0 0.03 0.054 0.5

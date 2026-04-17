@@ -1,0 +1,3 @@
+channel-lte.cha: synthetic minimal fixture
+id name cha_ini cha_hyd cha_sed cha_nut
+1 cha001 initcha1 hydcha001 null nutcha1

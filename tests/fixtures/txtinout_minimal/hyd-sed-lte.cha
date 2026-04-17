@@ -1,0 +1,3 @@
+hyd-sed-lte.cha: synthetic minimal fixture
+name order wd dp slp len mann k erod_fact cov_fact sinu eq_slp d50 clay carbon dry_bd side_slp bankfull_flo fps fpn n_conc p_conc p_bio description
+hydcha001 1 100.0 2.5 0.003 150.0 0.05 1.0 0.01 0.005 1.05 0.001 12.0 50.0 0.04 1.0 0.5 0.5 0.00001 0.1 0.0 0.0 0.0

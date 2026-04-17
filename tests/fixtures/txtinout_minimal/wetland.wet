@@ -1,0 +1,3 @@
+wetland.wet: synthetic minimal fixture
+id name init hyd rel sed nut
+1 wet001 initres1 hydwet001 wetland sedres1 nutres1

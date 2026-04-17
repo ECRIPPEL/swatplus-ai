@@ -14,7 +14,12 @@ none of them. Slice 4 parameter / operation / lookup databases
 (``fertilizer.frt``, ``tillage.til``, ``pesticide.pes``, ``*.ops``,
 ``cntable.lum``, ``cons_practice.lum``, ``ovn_table.lum``) are also
 optional because trimmed-down projects often omit DBs whose entries
-aren't actually referenced.
+aren't actually referenced. Slice 6 routing-body files (``aquifer.aqu``,
+``channel-lte.cha``, ``hyd-sed-lte.cha``, ``nutrients.cha``, the
+``*.res`` set, ``wetland.wet``, ``hydrology.wet``, and the three
+``initial.{aqu,cha,res}`` files) are likewise optional — a channels-only
+project has no reservoirs; an HRU-only sketch has no routing bodies
+at all.
 """
 
 from __future__ import annotations
@@ -27,8 +32,10 @@ from pydantic import BaseModel, ConfigDict
 
 from swatplus_ai.parser._base import ParseError
 from swatplus_ai.parser.inputs.aqu_catunit_ele import AquCatunitEle, parse_aqu_catunit_ele
+from swatplus_ai.parser.inputs.aquifer_aqu import AquiferAqu, parse_aquifer_aqu
 from swatplus_ai.parser.inputs.aquifer_con import AquiferCon, parse_aquifer_con
 from swatplus_ai.parser.inputs.chandeg_con import ChandegCon, parse_chandeg_con
+from swatplus_ai.parser.inputs.channel_lte_cha import ChannelLteCha, parse_channel_lte_cha
 from swatplus_ai.parser.inputs.chem_app_ops import ChemAppOps, parse_chem_app_ops
 from swatplus_ai.parser.inputs.cntable_lum import CnTableLum, parse_cntable_lum
 from swatplus_ai.parser.inputs.codes_bsn import CodesBsn, parse_codes_bsn
@@ -40,12 +47,18 @@ from swatplus_ai.parser.inputs.graze_ops import GrazeOps, parse_graze_ops
 from swatplus_ai.parser.inputs.harv_ops import HarvOps, parse_harv_ops
 from swatplus_ai.parser.inputs.hru_con import HruCon, parse_hru_con
 from swatplus_ai.parser.inputs.hru_data import HruData, parse_hru_data
+from swatplus_ai.parser.inputs.hyd_sed_lte_cha import HydSedLteCha, parse_hyd_sed_lte_cha
 from swatplus_ai.parser.inputs.hydrology_hyd import HydrologyHyd, parse_hydrology_hyd
+from swatplus_ai.parser.inputs.hydrology_res import HydrologyRes, parse_hydrology_res
+from swatplus_ai.parser.inputs.hydrology_wet import HydrologyWet, parse_hydrology_wet
+from swatplus_ai.parser.inputs.initial_any import InitialAny, parse_initial_any
 from swatplus_ai.parser.inputs.irr_ops import IrrOps, parse_irr_ops
 from swatplus_ai.parser.inputs.landuse_lum import LanduseLum, parse_landuse_lum
 from swatplus_ai.parser.inputs.ls_unit_def import LsUnitDef, parse_ls_unit_def
 from swatplus_ai.parser.inputs.ls_unit_ele import LsUnitEle, parse_ls_unit_ele
 from swatplus_ai.parser.inputs.management_sch import ManagementSch, parse_management_sch
+from swatplus_ai.parser.inputs.nutrients_cha import NutrientsCha, parse_nutrients_cha
+from swatplus_ai.parser.inputs.nutrients_res import NutrientsRes, parse_nutrients_res
 from swatplus_ai.parser.inputs.nutrients_sol import NutrientsSol, parse_nutrients_sol
 from swatplus_ai.parser.inputs.object_cnt import ObjectCnt, parse_object_cnt
 from swatplus_ai.parser.inputs.ovn_table_lum import OvnTableLum, parse_ovn_table_lum
@@ -54,10 +67,12 @@ from swatplus_ai.parser.inputs.pesticide_pes import PesticidePes, parse_pesticid
 from swatplus_ai.parser.inputs.plant_ini import PlantIni, parse_plant_ini
 from swatplus_ai.parser.inputs.print_prt import PrintPrt, parse_print_prt
 from swatplus_ai.parser.inputs.reservoir_con import ReservoirCon, parse_reservoir_con
+from swatplus_ai.parser.inputs.reservoir_res import ReservoirRes, parse_reservoir_res
 from swatplus_ai.parser.inputs.rout_unit_con import RoutUnitCon, parse_rout_unit_con
 from swatplus_ai.parser.inputs.rout_unit_def import RoutUnitDef, parse_rout_unit_def
 from swatplus_ai.parser.inputs.rout_unit_ele import RoutUnitEle, parse_rout_unit_ele
 from swatplus_ai.parser.inputs.rout_unit_rtu import RoutUnitRtu, parse_rout_unit_rtu
+from swatplus_ai.parser.inputs.sediment_res import SedimentRes, parse_sediment_res
 from swatplus_ai.parser.inputs.soils_sol import SoilsSol, parse_soils_sol
 from swatplus_ai.parser.inputs.sweep_ops import SweepOps, parse_sweep_ops
 from swatplus_ai.parser.inputs.tillage_til import TillageTil, parse_tillage_til
@@ -66,6 +81,7 @@ from swatplus_ai.parser.inputs.topography_hyd import TopographyHyd, parse_topogr
 from swatplus_ai.parser.inputs.weather_cli import WeatherCli, parse_weather_cli
 from swatplus_ai.parser.inputs.weather_sta_cli import WeatherStaCli, parse_weather_sta_cli
 from swatplus_ai.parser.inputs.weather_wgn_cli import WeatherWgnCli, parse_weather_wgn_cli
+from swatplus_ai.parser.inputs.wetland_wet import WetlandWet, parse_wetland_wet
 from swatplus_ai.parser.models import ParsedFile
 
 _T = TypeVar("_T", bound=ParsedFile)
@@ -134,6 +150,22 @@ class TxtInOutProject(BaseModel):
     rout_unit_rtu: RoutUnitRtu | None
     aqu_catunit_ele: AquCatunitEle | None
 
+    # Routing bodies (slice 6) — physical aquifer / channel / reservoir /
+    # wetland parameters plus their initial conditions.
+    aquifer_aqu: AquiferAqu | None
+    initial_aqu: InitialAny | None
+    channel_lte_cha: ChannelLteCha | None
+    hyd_sed_lte_cha: HydSedLteCha | None
+    nutrients_cha: NutrientsCha | None
+    initial_cha: InitialAny | None
+    reservoir_res: ReservoirRes | None
+    hydrology_res: HydrologyRes | None
+    nutrients_res: NutrientsRes | None
+    sediment_res: SedimentRes | None
+    initial_res: InitialAny | None
+    wetland_wet: WetlandWet | None
+    hydrology_wet: HydrologyWet | None
+
     # Weather wiring
     weather_sta: WeatherStaCli
     weather_wgn: WeatherWgnCli
@@ -193,6 +225,19 @@ class TxtInOutProject(BaseModel):
             rout_unit_ele=_optional(folder, "rout_unit.ele", parse_rout_unit_ele),
             rout_unit_rtu=_optional(folder, "rout_unit.rtu", parse_rout_unit_rtu),
             aqu_catunit_ele=_optional(folder, "aqu_catunit.ele", parse_aqu_catunit_ele),
+            aquifer_aqu=_optional(folder, "aquifer.aqu", parse_aquifer_aqu),
+            initial_aqu=_optional(folder, "initial.aqu", parse_initial_any),
+            channel_lte_cha=_optional(folder, "channel-lte.cha", parse_channel_lte_cha),
+            hyd_sed_lte_cha=_optional(folder, "hyd-sed-lte.cha", parse_hyd_sed_lte_cha),
+            nutrients_cha=_optional(folder, "nutrients.cha", parse_nutrients_cha),
+            initial_cha=_optional(folder, "initial.cha", parse_initial_any),
+            reservoir_res=_optional(folder, "reservoir.res", parse_reservoir_res),
+            hydrology_res=_optional(folder, "hydrology.res", parse_hydrology_res),
+            nutrients_res=_optional(folder, "nutrients.res", parse_nutrients_res),
+            sediment_res=_optional(folder, "sediment.res", parse_sediment_res),
+            initial_res=_optional(folder, "initial.res", parse_initial_any),
+            wetland_wet=_optional(folder, "wetland.wet", parse_wetland_wet),
+            hydrology_wet=_optional(folder, "hydrology.wet", parse_hydrology_wet),
             weather_sta=parse_weather_sta_cli(folder / "weather-sta.cli"),
             weather_wgn=parse_weather_wgn_cli(folder / "weather-wgn.cli"),
             pcp_cli=_optional(folder, "pcp.cli", parse_weather_cli),

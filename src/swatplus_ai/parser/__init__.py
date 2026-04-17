@@ -6,8 +6,14 @@ from swatplus_ai.parser.inputs.aqu_catunit_ele import (
     AquCatunitEleRow,
     parse_aqu_catunit_ele,
 )
+from swatplus_ai.parser.inputs.aquifer_aqu import AquiferAqu, AquiferAquRow, parse_aquifer_aqu
 from swatplus_ai.parser.inputs.aquifer_con import AquiferCon, AquiferConRow, parse_aquifer_con
 from swatplus_ai.parser.inputs.chandeg_con import ChandegCon, ChandegConRow, parse_chandeg_con
+from swatplus_ai.parser.inputs.channel_lte_cha import (
+    ChannelLteCha,
+    ChannelLteChaRow,
+    parse_channel_lte_cha,
+)
 from swatplus_ai.parser.inputs.chem_app_ops import (
     ChemAppOps,
     ChemAppOpsRow,
@@ -31,11 +37,27 @@ from swatplus_ai.parser.inputs.graze_ops import GrazeOps, GrazeOpsRow, parse_gra
 from swatplus_ai.parser.inputs.harv_ops import HarvOps, HarvOpsRow, parse_harv_ops
 from swatplus_ai.parser.inputs.hru_con import HruCon, HruConRow, parse_hru_con
 from swatplus_ai.parser.inputs.hru_data import HruData, HruDataRow, parse_hru_data
+from swatplus_ai.parser.inputs.hyd_sed_lte_cha import (
+    HydSedLteCha,
+    HydSedLteChaRow,
+    parse_hyd_sed_lte_cha,
+)
 from swatplus_ai.parser.inputs.hydrology_hyd import (
     HydrologyHyd,
     HydrologyHydRow,
     parse_hydrology_hyd,
 )
+from swatplus_ai.parser.inputs.hydrology_res import (
+    HydrologyRes,
+    HydrologyResRow,
+    parse_hydrology_res,
+)
+from swatplus_ai.parser.inputs.hydrology_wet import (
+    HydrologyWet,
+    HydrologyWetRow,
+    parse_hydrology_wet,
+)
+from swatplus_ai.parser.inputs.initial_any import InitialAny, InitialAnyRow, parse_initial_any
 from swatplus_ai.parser.inputs.irr_ops import IrrOps, IrrOpsRow, parse_irr_ops
 from swatplus_ai.parser.inputs.landuse_lum import LanduseLum, LanduseLumRow, parse_landuse_lum
 from swatplus_ai.parser.inputs.ls_unit_def import LsUnitDef, LsUnitDefRow, parse_ls_unit_def
@@ -46,6 +68,16 @@ from swatplus_ai.parser.inputs.management_sch import (
     ManagementSchedule,
     ScheduledOp,
     parse_management_sch,
+)
+from swatplus_ai.parser.inputs.nutrients_cha import (
+    NutrientsCha,
+    NutrientsChaRow,
+    parse_nutrients_cha,
+)
+from swatplus_ai.parser.inputs.nutrients_res import (
+    NutrientsRes,
+    NutrientsResRow,
+    parse_nutrients_res,
 )
 from swatplus_ai.parser.inputs.nutrients_sol import (
     NutrientsSol,
@@ -76,6 +108,11 @@ from swatplus_ai.parser.inputs.reservoir_con import (
     ReservoirConRow,
     parse_reservoir_con,
 )
+from swatplus_ai.parser.inputs.reservoir_res import (
+    ReservoirRes,
+    ReservoirResRow,
+    parse_reservoir_res,
+)
 from swatplus_ai.parser.inputs.rout_unit_con import (
     RoutUnitCon,
     RoutUnitConRow,
@@ -96,6 +133,7 @@ from swatplus_ai.parser.inputs.rout_unit_rtu import (
     RoutUnitRtuRow,
     parse_rout_unit_rtu,
 )
+from swatplus_ai.parser.inputs.sediment_res import SedimentRes, SedimentResRow, parse_sediment_res
 from swatplus_ai.parser.inputs.soils_sol import Soil, SoilLayer, SoilsSol, parse_soils_sol
 from swatplus_ai.parser.inputs.sweep_ops import SweepOps, SweepOpsRow, parse_sweep_ops
 from swatplus_ai.parser.inputs.tillage_til import TillageTil, TillageTilRow, parse_tillage_til
@@ -117,17 +155,22 @@ from swatplus_ai.parser.inputs.weather_wgn_cli import (
     WgnStation,
     parse_weather_wgn_cli,
 )
+from swatplus_ai.parser.inputs.wetland_wet import WetlandWet, WetlandWetRow, parse_wetland_wet
 from swatplus_ai.parser.models import ConConnection, ParsedFile
 from swatplus_ai.parser.txtinout import TxtInOutProject
 
 __all__ = [
     "AquCatunitEle",
     "AquCatunitEleRow",
+    "AquiferAqu",
+    "AquiferAquRow",
     "AquiferCon",
     "AquiferConRow",
     "AutoOp",
     "ChandegCon",
     "ChandegConRow",
+    "ChannelLteCha",
+    "ChannelLteChaRow",
     "ChemAppOps",
     "ChemAppOpsRow",
     "CnTableLum",
@@ -150,8 +193,16 @@ __all__ = [
     "HruConRow",
     "HruData",
     "HruDataRow",
+    "HydSedLteCha",
+    "HydSedLteChaRow",
     "HydrologyHyd",
     "HydrologyHydRow",
+    "HydrologyRes",
+    "HydrologyResRow",
+    "HydrologyWet",
+    "HydrologyWetRow",
+    "InitialAny",
+    "InitialAnyRow",
     "IrrOps",
     "IrrOpsRow",
     "LanduseLum",
@@ -162,6 +213,10 @@ __all__ = [
     "LsUnitEleRow",
     "ManagementSch",
     "ManagementSchedule",
+    "NutrientsCha",
+    "NutrientsChaRow",
+    "NutrientsRes",
+    "NutrientsResRow",
     "NutrientsSol",
     "NutrientsSolRow",
     "ObjectCnt",
@@ -179,6 +234,8 @@ __all__ = [
     "PrintPrt",
     "ReservoirCon",
     "ReservoirConRow",
+    "ReservoirRes",
+    "ReservoirResRow",
     "RoutUnitCon",
     "RoutUnitConRow",
     "RoutUnitDef",
@@ -188,6 +245,8 @@ __all__ = [
     "RoutUnitRtu",
     "RoutUnitRtuRow",
     "ScheduledOp",
+    "SedimentRes",
+    "SedimentResRow",
     "Soil",
     "SoilLayer",
     "SoilsSol",
@@ -203,11 +262,15 @@ __all__ = [
     "WeatherStaCli",
     "WeatherStaCliRow",
     "WeatherWgnCli",
+    "WetlandWet",
+    "WetlandWetRow",
     "WgnMonth",
     "WgnStation",
     "parse_aqu_catunit_ele",
+    "parse_aquifer_aqu",
     "parse_aquifer_con",
     "parse_chandeg_con",
+    "parse_channel_lte_cha",
     "parse_chem_app_ops",
     "parse_cntable_lum",
     "parse_codes_bsn",
@@ -219,12 +282,18 @@ __all__ = [
     "parse_harv_ops",
     "parse_hru_con",
     "parse_hru_data",
+    "parse_hyd_sed_lte_cha",
     "parse_hydrology_hyd",
+    "parse_hydrology_res",
+    "parse_hydrology_wet",
+    "parse_initial_any",
     "parse_irr_ops",
     "parse_landuse_lum",
     "parse_ls_unit_def",
     "parse_ls_unit_ele",
     "parse_management_sch",
+    "parse_nutrients_cha",
+    "parse_nutrients_res",
     "parse_nutrients_sol",
     "parse_object_cnt",
     "parse_ovn_table_lum",
@@ -233,10 +302,12 @@ __all__ = [
     "parse_plant_ini",
     "parse_print_prt",
     "parse_reservoir_con",
+    "parse_reservoir_res",
     "parse_rout_unit_con",
     "parse_rout_unit_def",
     "parse_rout_unit_ele",
     "parse_rout_unit_rtu",
+    "parse_sediment_res",
     "parse_soils_sol",
     "parse_sweep_ops",
     "parse_tillage_til",
@@ -245,4 +316,5 @@ __all__ = [
     "parse_weather_cli",
     "parse_weather_sta_cli",
     "parse_weather_wgn_cli",
+    "parse_wetland_wet",
 ]

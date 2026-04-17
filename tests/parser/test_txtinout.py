@@ -63,6 +63,21 @@ def test_read_minimal(minimal_project: Path) -> None:
     assert p.rout_unit_rtu is not None
     assert p.aqu_catunit_ele is not None
 
+    # Minimal fixture ships the slice-6 routing-body files.
+    assert p.aquifer_aqu is not None
+    assert p.initial_aqu is not None
+    assert p.channel_lte_cha is not None
+    assert p.hyd_sed_lte_cha is not None
+    assert p.nutrients_cha is not None
+    assert p.initial_cha is not None
+    assert p.reservoir_res is not None
+    assert p.hydrology_res is not None
+    assert p.nutrients_res is not None
+    assert p.sediment_res is not None
+    assert p.initial_res is not None
+    assert p.wetland_wet is not None
+    assert p.hydrology_wet is not None
+
     # Minimal fixture ships pcp.cli but not the other four observed files.
     assert p.pcp_cli is not None
     assert len(p.pcp_cli.filenames) > 0
@@ -166,6 +181,44 @@ def test_read_absent_slice5_topology_is_ok(tmp_path: Path, minimal_project: Path
     assert p.rout_unit_ele is None
     assert p.rout_unit_rtu is None
     assert p.aqu_catunit_ele is None
+    # Required fields still load.
+    assert len(p.hru_data.rows) > 0
+
+
+def test_read_absent_slice6_routing_bodies_is_ok(tmp_path: Path, minimal_project: Path) -> None:
+    # HRU-only sketches or channels-only projects may ship without routing bodies.
+    staging = tmp_path / "staging"
+    shutil.copytree(minimal_project, staging)
+    for name in (
+        "aquifer.aqu",
+        "initial.aqu",
+        "channel-lte.cha",
+        "hyd-sed-lte.cha",
+        "nutrients.cha",
+        "initial.cha",
+        "reservoir.res",
+        "hydrology.res",
+        "nutrients.res",
+        "sediment.res",
+        "initial.res",
+        "wetland.wet",
+        "hydrology.wet",
+    ):
+        (staging / name).unlink()
+    p = TxtInOutProject.read(staging)
+    assert p.aquifer_aqu is None
+    assert p.initial_aqu is None
+    assert p.channel_lte_cha is None
+    assert p.hyd_sed_lte_cha is None
+    assert p.nutrients_cha is None
+    assert p.initial_cha is None
+    assert p.reservoir_res is None
+    assert p.hydrology_res is None
+    assert p.nutrients_res is None
+    assert p.sediment_res is None
+    assert p.initial_res is None
+    assert p.wetland_wet is None
+    assert p.hydrology_wet is None
     # Required fields still load.
     assert len(p.hru_data.rows) > 0
 
