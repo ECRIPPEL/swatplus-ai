@@ -1,0 +1,5 @@
+pcp.cli: minimal synthetic fixture for SWAT+ai tests
+filename
+sta001.pcp
+sta002.pcp
+sta003.pcp
