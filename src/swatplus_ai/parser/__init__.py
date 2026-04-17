@@ -16,6 +16,7 @@ from swatplus_ai.parser.inputs.plant_ini import (
     parse_plant_ini,
 )
 from swatplus_ai.parser.inputs.print_prt import ObjectPrintFlags, PrintPrt, parse_print_prt
+from swatplus_ai.parser.inputs.soils_sol import Soil, SoilLayer, SoilsSol, parse_soils_sol
 from swatplus_ai.parser.inputs.time_sim import TimeSim, parse_time_sim
 from swatplus_ai.parser.models import ParsedFile
 
@@ -35,6 +36,9 @@ __all__ = [
     "PlantIni",
     "PlantMember",
     "PrintPrt",
+    "Soil",
+    "SoilLayer",
+    "SoilsSol",
     "TimeSim",
     "parse_file_cio",
     "parse_hru_data",
@@ -42,5 +46,6 @@ __all__ = [
     "parse_landuse_lum",
     "parse_plant_ini",
     "parse_print_prt",
+    "parse_soils_sol",
     "parse_time_sim",
 ]
