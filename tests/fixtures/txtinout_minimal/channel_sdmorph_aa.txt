@@ -1,0 +1,4 @@
+ synthetic_basin SWAT+ 2026-01-16        MODULAR Rev 2026.61.0.2.61
+  jday mon day yr unit gis_id name flo_in geo_bf flo_out peakr sed_in sed_out washld bedld dep deg_btm deg_bank hc_sed width depth slope deg_btm deg_bank hc_len flo_in_mm aqu_in_mm flo_out_mm sed_stor n_tot p_tot dep_bf velav_bf
+  ---  mo  d   yr -    -     -    m3     m3     m3      m3/s  tons   tons    tons   tons  tons tons    tons    tons  m     m     m/m   m       m        m      mm        mm        mm         tons     kg    kg    m      m/s
+  365  12  31  1989 1   1     cha1 500.0  50.0   480.0   1.2   2.0    1.9     1.5    0.4   0.1  0.05    0.05    0.01  4.0   1.5   0.002 0.005   0.005    100.0  12.0      2.0       11.5       0.5      8.0   3.0   1.2    0.6

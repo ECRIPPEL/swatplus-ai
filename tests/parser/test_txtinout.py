@@ -109,6 +109,18 @@ def test_read_minimal(minimal_project: Path) -> None:
     assert p.hmd_cli is None
     assert p.wnd_cli is None
 
+    # Slice A outputs are wired and tolerant of missing files.
+    assert p.outputs.folder == minimal_project
+    assert p.outputs.basin_wb_aa is not None
+    assert len(p.outputs.basin_wb_aa) == 1
+    assert p.outputs.hru_wb_aa is not None
+    assert p.outputs.channel_sd_aa is not None
+    assert p.outputs.aquifer_aa is not None
+
+    # Topology accessor reads already-parsed chandeg.con.
+    outfalls = p.topology.outfall_channels()
+    assert all(isinstance(n, str) for n in outfalls)
+
 
 def test_read_uru(uru_project: Path) -> None:
     p = TxtInOutProject.read(uru_project)
@@ -124,6 +136,17 @@ def test_read_uru(uru_project: Path) -> None:
     for row in p.hru_data.rows:
         if row.soil is not None:
             assert p.soils_sol.by_name(row.soil) is not None
+
+    # URU ships annual-average outputs; the namespace wires them all.
+    assert p.outputs.basin_wb_aa is not None
+    assert p.outputs.hru_wb_aa is not None and len(p.outputs.hru_wb_aa) > 10_000
+    assert p.outputs.channel_sd_aa is not None
+    assert p.outputs.aquifer_aa is not None
+    assert p.outputs.reservoir_aa is not None
+    assert p.outputs.wetland_aa is not None
+
+    # URU has exactly one outfall channel (cha033).
+    assert p.topology.outfall_channels() == ("cha033",)
 
 
 def test_read_missing_folder_raises(tmp_path: Path) -> None:

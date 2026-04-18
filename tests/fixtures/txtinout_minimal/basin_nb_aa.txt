@@ -1,0 +1,4 @@
+ synthetic_basin SWAT+ 2026-01-16        MODULAR Rev 2026.61.0.2.61
+  jday mon day yr unit gis_id name grzn grzp lab_min_p act_sta_p fertn fertp fixn denit act_nit_n act_sta_n org_lab_p rsd_nitorg_n rsd_laborg_p no3atmo nh4atmo nuptake puptake gwsoiln gwsoilp plant_cov mgt_ops
+  ---  mo  d   yr -    -    -    kg/ha kg/ha kg/ha    kg/ha     kg/ha kg/ha kg/ha kg/ha kg/ha     kg/ha     kg/ha     kg/ha        kg/ha        kg/ha   kg/ha   kg/ha   kg/ha   kg/ha  kg/ha  --       --
+  365  12  31  1989 1   1    basin 0.0   0.0   0.1       0.05      20.0  5.0   2.0   1.5   3.0       0.5       0.2       4.0          0.3          1.2     0.4     40.0    8.0     0.01    0.0    Original Simulation 0.0

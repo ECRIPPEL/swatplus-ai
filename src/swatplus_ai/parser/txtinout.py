@@ -104,6 +104,8 @@ from swatplus_ai.parser.inputs.weather_sta_cli import WeatherStaCli, parse_weath
 from swatplus_ai.parser.inputs.weather_wgn_cli import WeatherWgnCli, parse_weather_wgn_cli
 from swatplus_ai.parser.inputs.wetland_wet import WetlandWet, parse_wetland_wet
 from swatplus_ai.parser.models import ParsedFile
+from swatplus_ai.parser.outputs import OutputsNamespace
+from swatplus_ai.parser.topology import TopologyAccessor
 
 _T = TypeVar("_T", bound=ParsedFile)
 
@@ -221,6 +223,16 @@ class TxtInOutProject(BaseModel):
     hmd_cli: WeatherCli | None
     wnd_cli: WeatherCli | None
 
+    # Annual-average / yearly outputs (Step 3 Slice A). Every DataFrame
+    # inside is optional — projects whose simulation hasn't been run
+    # will have ``outputs`` present but all fields ``None``.
+    outputs: OutputsNamespace
+
+    @property
+    def topology(self) -> TopologyAccessor:
+        """Graph-level queries derived from parsed ``*.con`` tables."""
+        return TopologyAccessor(self)
+
     @classmethod
     def read(cls, folder: Path) -> TxtInOutProject:
         """Parse every known SWAT+ input file in ``folder``."""
@@ -297,6 +309,7 @@ class TxtInOutProject(BaseModel):
             slr_cli=_optional(folder, "slr.cli", parse_weather_cli),
             hmd_cli=_optional(folder, "hmd.cli", parse_weather_cli),
             wnd_cli=_optional(folder, "wnd.cli", parse_weather_cli),
+            outputs=OutputsNamespace.read(folder),
         )
 
 

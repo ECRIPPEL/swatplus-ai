@@ -1,0 +1,4 @@
+ synthetic_basin SWAT+ 2026-01-16        MODULAR Rev 2026.61.0.2.61
+  jday mon day yr unit gis_id name flo dep_wt stor rchrg seep revap no3_st minp orgn orgp no3_rchg no3_loss no3_lat no3_seep flo_cha flo_res flo_ls
+  ---  mo  d   yr -    -     -    mm  m      mm   mm    mm   mm    kg/ha  kg/ha kg/ha kg/ha kg/ha    kg/ha    kg/ha   kg/ha    mm      mm      mm
+  365  12  31  1989 1   1     aqu1 25.0 2.5   300.0 45.0  2.0  5.0   3.0    0.1   0.2   0.05  2.0      0.5      0.1     0.05     20.0    2.0     3.0
