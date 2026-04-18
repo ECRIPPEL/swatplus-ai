@@ -1,0 +1,7 @@
+id: setup.files_present
+severity: error
+stage: [setup]
+requires: []
+check: setup_files_present
+message: "Required control file {file} is missing or unparseable"
+references: []

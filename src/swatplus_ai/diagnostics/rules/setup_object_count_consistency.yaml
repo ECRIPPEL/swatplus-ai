@@ -1,0 +1,7 @@
+id: setup.object_count_consistency
+severity: error
+stage: [setup]
+requires: [object_cnt]
+check: setup_object_count_consistency
+message: "object.cnt declares {declared} {object} objects but the corresponding .con file has {actual}"
+references: []

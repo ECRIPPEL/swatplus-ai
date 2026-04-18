@@ -1,0 +1,7 @@
+id: setup.mgt_date_order
+severity: warning
+stage: [setup]
+requires: [management_sch]
+check: setup_mgt_date_order
+message: "Schedule {schedule} has out-of-order operation at index {op_index}: {current} follows {prior}"
+references: []

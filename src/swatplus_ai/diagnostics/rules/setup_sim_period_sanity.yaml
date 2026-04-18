@@ -1,0 +1,7 @@
+id: setup.sim_period_sanity
+severity: error
+stage: [setup]
+requires: [time_sim]
+check: setup_sim_period_sanity
+message: "{reason}"
+references: []

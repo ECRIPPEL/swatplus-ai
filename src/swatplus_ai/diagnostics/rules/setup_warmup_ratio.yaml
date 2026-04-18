@@ -1,0 +1,7 @@
+id: setup.warmup_ratio
+severity: warning
+stage: [setup]
+requires: [time_sim, print_prt]
+check: setup_warmup_ratio
+message: "{reason}"
+references: []
