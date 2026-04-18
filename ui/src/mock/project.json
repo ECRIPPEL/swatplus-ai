@@ -1,0 +1,16 @@
+{
+  "name": "URU Basin",
+  "path": "/projects/uru/TxtInOut",
+  "simulationStart": "2008-01-01",
+  "simulationEnd": "2019-12-31",
+  "warmupYears": 3,
+  "subbasins": 27,
+  "hrus": 312,
+  "channels": 33,
+  "weatherStations": 5,
+  "modelVersion": "SWAT+ rev.61.0.2",
+  "outfallChannel": "cha033",
+  "climate": "Humid subtropical (Cfa)",
+  "area_km2": 412.6,
+  "readyToRun": true
+}

@@ -1,0 +1,193 @@
+[
+  {
+    "id": "f001",
+    "severity": "error",
+    "ruleId": "wb.missing_precip_station",
+    "title": "Weather station pcp04 has 18 days of missing precipitation",
+    "location": "pcp.cli → pcp04.pcp · 2014-03-11 → 2014-03-28",
+    "evidence": "18 consecutive -99.0 sentinel rows in pcp04.pcp",
+    "explanation": "A gap of this length during a known wet-season month will bias the basin water balance. SWAT+ fills -99 days with the long-term mean, which flattens storm events and under-predicts runoff peaks downstream.",
+    "suggestion": "Infill from the nearest neighbour station (pcp02, 12 km away) using inverse-distance weighting, or trim the simulation window to skip 2014.",
+    "citations": [
+      { "id": "c1", "label": "Arnold 2012 §3.2", "source": "Arnold et al., Trans. ASABE 55(4), 2012" },
+      { "id": "c2", "label": "SWAT+ I/O spec — pcp.cli", "source": "SWAT+ Input/Output Documentation rev. 61" }
+    ]
+  },
+  {
+    "id": "f002",
+    "severity": "error",
+    "ruleId": "routing.orphan_channel",
+    "title": "Channel cha019 has no downstream receiver",
+    "location": "chandeg.con · cha019",
+    "evidence": "dsobj_typ = 'null', dsobj = 0 for cha019 but cha019 is not flagged as outfall in object.cnt",
+    "explanation": "A non-outfall channel with a null downstream object will silently drop all water routed to it. The outfall detector found a single outlet at cha033; cha019 should route into it.",
+    "suggestion": "In QSWAT+, re-run stream delineation or manually set cha019.dsobj → cha033 in chandeg.con.",
+    "citations": [
+      { "id": "c3", "label": "SWAT+ I/O spec — chandeg.con", "source": "SWAT+ Input/Output Documentation rev. 61" }
+    ]
+  },
+  {
+    "id": "f003",
+    "severity": "warning",
+    "ruleId": "wb.et_precip_ratio",
+    "title": "ET/precip ratio of 0.83 is at the upper range",
+    "location": "basin_wb_aa.txt · whole-basin averages",
+    "evidence": "precip = 1427 mm/yr · et = 1186 mm/yr · ratio = 0.83",
+    "explanation": "For humid subtropical basins, the literature typical range is 0.55–0.85 (White et al. 2014). A ratio at the edge of the range suggests ET may be slightly over-predicted — commonly traced to low ESCO or aggressive PET (Penman-Monteith with undercalibrated canopy resistance).",
+    "suggestion": "Inspect ESCO (currently 0.95) and consider lowering to 0.75 for forested HRUs. Compare against a PET-only sensitivity run.",
+    "citations": [
+      { "id": "c4", "label": "White 2014", "source": "White et al., JAWRA 50(5), 2014" },
+      { "id": "c5", "label": "Arnold 2012 §4.3", "source": "Arnold et al., Trans. ASABE 55(4), 2012" }
+    ]
+  },
+  {
+    "id": "f004",
+    "severity": "warning",
+    "ruleId": "mgt.plant_op_outside_growing_season",
+    "title": "Plant operation scheduled in month with T_avg < 5°C",
+    "location": "management.sch · row 47 (hru042 — corn, plant 2015-12-18)",
+    "evidence": "pcp05 Dec 2015 T_avg = 3.4°C · plant op date = 2015-12-18",
+    "explanation": "SWAT+ will accept the schedule but PHU accumulation will stall; the crop will not reach harvest before the next growing season, which typically manifests as stuck LAI and zero biomass at harvest.",
+    "suggestion": "Use auto-plant with heat-unit trigger (PHU = 0.15) instead of a fixed date, or shift to March.",
+    "citations": [
+      { "id": "c6", "label": "SWATdoctR step 3", "source": "Schürz & Plunge, Env. Modelling & Software 171, 2024" }
+    ]
+  },
+  {
+    "id": "f005",
+    "severity": "warning",
+    "ruleId": "hru.slope_outlier",
+    "title": "27 HRUs have slope > 45%",
+    "location": "topography.hyd · 27 HRUs",
+    "evidence": "max slope = 62.3% · median = 11% · 27 HRUs above 45%",
+    "explanation": "Steep HRUs produce unrealistically high sediment yields under the default MUSLE formulation. This is not a setup error but will dominate the sediment signal at the outfall.",
+    "suggestion": "Consider a cons_practice.lum lookup with terracing or contour tillage for the affected HRUs.",
+    "citations": [
+      { "id": "c7", "label": "Arnold 2012 §5.1", "source": "Arnold et al., Trans. ASABE 55(4), 2012" }
+    ]
+  },
+  {
+    "id": "f006",
+    "severity": "warning",
+    "ruleId": "cal.parameter_at_bound",
+    "title": "ALPHA_BF hit upper bound in iteration 18",
+    "location": "calibration history · iter 18 · alpha_bf = 1.0",
+    "evidence": "bounds [0.0, 1.0] · sampled value 0.998 · sensitivity rank 2/14",
+    "explanation": "Parameters pinned to a bound mean either the bound is wrong or another parameter is compensating. ALPHA_BF = 1 implies near-instantaneous baseflow recession, which is unphysical for this basin.",
+    "suggestion": "Widen ALPHA_BF to [0.01, 0.8] and add GW_DELAY to the parameter set; they compensate each other.",
+    "citations": [
+      { "id": "c8", "label": "Abbaspour 2015", "source": "Abbaspour, SWAT-CUP User Manual, 2015" }
+    ]
+  },
+  {
+    "id": "f007",
+    "severity": "warning",
+    "ruleId": "wb.baseflow_ratio",
+    "title": "Baseflow index of 0.71 is high for this land use mix",
+    "location": "basin_wb_aa.txt · perc / (perc + surq)",
+    "evidence": "perc = 412 mm/yr · surq = 168 mm/yr · bfi = 0.71",
+    "explanation": "A BFI of 0.71 would be typical for a deeply permeable sandy basin. URU's dominant soil is clay-loam, which typically yields BFI ≈ 0.4–0.55.",
+    "suggestion": "Lower CN2 by 5–8% and raise SURLAG; also verify the soils.sol layer 1 K_sat is not orders-of-magnitude off.",
+    "citations": [
+      { "id": "c9", "label": "Arnold 2012 §4.4", "source": "Arnold et al., Trans. ASABE 55(4), 2012" }
+    ]
+  },
+  {
+    "id": "f008",
+    "severity": "info",
+    "ruleId": "meta.warmup_ok",
+    "title": "Warmup period (3 years) meets Daggupati 2015 guidance",
+    "location": "time.sim · print.prt",
+    "evidence": "warmup = 3 yr · sim = 12 yr · ratio 0.25",
+    "explanation": "Warmup length is adequate for a mid-sized basin with shallow aquifer storage.",
+    "suggestion": "No action required.",
+    "citations": [
+      { "id": "c10", "label": "Daggupati 2015", "source": "Daggupati et al., JAWRA 51(6), 2015" }
+    ]
+  },
+  {
+    "id": "f009",
+    "severity": "info",
+    "ruleId": "routing.outfall_detected",
+    "title": "Basin outfall auto-detected: cha033",
+    "location": "chandeg.con · topology",
+    "evidence": "cha033 is the only channel with no downstream receiver",
+    "explanation": "Modules 2 and 3 will default their evaluation channel to cha033. Change with `--channel` if a nested gauge is the target.",
+    "suggestion": "No action required.",
+    "citations": []
+  },
+  {
+    "id": "f010",
+    "severity": "warning",
+    "ruleId": "cal.low_sensitivity",
+    "title": "ESCO has near-zero sensitivity rank",
+    "location": "calibration · sensitivity analysis · ESCO",
+    "evidence": "rank = 13/14 · mean |dNSE/dθ| = 0.003",
+    "explanation": "Low sensitivity means either the parameter genuinely does not matter at this basin scale, or the sensitivity probe used a range too narrow to exercise it.",
+    "suggestion": "Drop ESCO from calibration to free token budget; keep fixed at 0.80.",
+    "citations": [
+      { "id": "c11", "label": "Arnold 2012 §4.3", "source": "Arnold et al., Trans. ASABE 55(4), 2012" }
+    ]
+  },
+  {
+    "id": "f011",
+    "severity": "info",
+    "ruleId": "meta.simulation_period",
+    "title": "12-year simulation period is adequate for climate variability",
+    "location": "time.sim",
+    "evidence": "2008-01-01 → 2019-12-31",
+    "explanation": "Covers at least one ENSO cycle; daily metrics will be less noisy than in shorter runs.",
+    "suggestion": "No action required.",
+    "citations": [
+      { "id": "c12", "label": "Moriasi 2015", "source": "Moriasi et al., Trans. ASABE 58(6), 2015" }
+    ]
+  },
+  {
+    "id": "f012",
+    "severity": "warning",
+    "ruleId": "mgt.unresolved_fk",
+    "title": "2 management operations reference unknown fertilizer",
+    "location": "management.sch · rows 112, 118",
+    "evidence": "op = 'fert' · fert_name = 'urea_32' not in fertilizer.frt",
+    "explanation": "SWAT+ will fall back to the first fertilizer entry silently; nutrient loads downstream will be wrong but the model will run.",
+    "suggestion": "Add urea_32 to fertilizer.frt (check the SWAT+ editor's default DB) or remap rows 112 & 118.",
+    "citations": [
+      { "id": "c13", "label": "SWAT+ I/O spec — management.sch", "source": "SWAT+ Input/Output Documentation rev. 61" }
+    ]
+  },
+  {
+    "id": "f013",
+    "severity": "info",
+    "ruleId": "meta.soil_diversity",
+    "title": "8 distinct soil types across 312 HRUs",
+    "location": "soils.sol",
+    "evidence": "unique SNAM count = 8 · dominant = 'CLLOAM' (41%)",
+    "explanation": "Reasonable diversity — avoid over-simplifying. Uniqueness at 8 soil types is typical for a basin this size.",
+    "suggestion": "No action required.",
+    "citations": []
+  },
+  {
+    "id": "f014",
+    "severity": "warning",
+    "ruleId": "wb.pet_method_mismatch",
+    "title": "PET method is Hargreaves but solar radiation is available",
+    "location": "codes.bsn · pet = 2",
+    "evidence": "pet = 2 (Hargreaves) · slr.cli has 5 stations with full coverage",
+    "explanation": "Penman-Monteith (pet = 1) is physically preferred when all climate inputs are available; Hargreaves is a fallback for data-sparse regions.",
+    "suggestion": "Switch codes.bsn:pet to 1 and re-run. Compare basin ET against the current run.",
+    "citations": [
+      { "id": "c14", "label": "Arnold 2012 §4.3", "source": "Arnold et al., Trans. ASABE 55(4), 2012" }
+    ]
+  },
+  {
+    "id": "f015",
+    "severity": "info",
+    "ruleId": "meta.dtl_intact",
+    "title": "Decision tables parsed cleanly",
+    "location": "lum.dtl · res_rel.dtl",
+    "evidence": "lum.dtl: 12 tables · res_rel.dtl: 3 tables · no header mismatches",
+    "explanation": "Decision tables are often silently corrupted by hand-editing; yours parse cleanly.",
+    "suggestion": "No action required.",
+    "citations": []
+  }
+]
