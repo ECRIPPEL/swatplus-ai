@@ -23,3 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Output parsers slice A — annual-average / yearly summaries as pandas DataFrames: `basin_wb_aa`, `basin_pw_aa`, `basin_ls_aa`, `basin_nb_aa`, `hru_wb_aa`, `hru_pw_aa`, `hru_ls_aa`, `hru_nb_aa`, `channel_sd_aa`, `channel_sdmorph_aa`, `aquifer_aa`, `reservoir_aa`, `wetland_aa`. Shared `read_aa_output` reader handles title/header/units preambles, multi-word text columns (`plant_cov`), duplicate header names (`null` separators, repeated `deg_btm`/`deg_bank`), and short rows. Wired into `TxtInOutProject.outputs`; every DataFrame is optional so un-run projects still parse.
 - `TxtInOutProject.topology.outfall_channels()` returns names of channels with `out_tot == 0` from the already-parsed `chandeg.con`.
 - New runtime dependencies: `pandas>=2.2`, `pyarrow>=16`.
+- LLM gateway (Phase 1 Step 5):
+  - `swatplus_ai.llm.interface` — `Message`, `LLMResponse`, `LLMBackend` Protocol, `LLMError` / `AuthError` / `RateLimitError`.
+  - API-key backends for Anthropic (`x-api-key`) and OpenAI (`Bearer`) speaking raw HTTP via `httpx` (no vendor SDKs), with streaming SSE support.
+  - `MockBackend` for deterministic tests.
+  - Token storage: in-memory default plus an optional OS-keyring store (install with the new `secrets` extra: `pip install 'swatplus-ai[secrets]'`).
+  - **Experimental, opt-in** OAuth passthrough backends for Anthropic and OpenAI using the Authorization Code + PKCE flow that Claude Code and OpenAI Codex CLI use. Subscription-bound; disabled by default until the upstream client IDs are pinned.
