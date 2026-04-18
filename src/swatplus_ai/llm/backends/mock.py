@@ -9,7 +9,10 @@ prompt-assembler / module code without binding to a real provider.
 from __future__ import annotations
 
 from collections.abc import AsyncIterator, Sequence
+from time import perf_counter
+from typing import ClassVar
 
+import swatplus_ai.telemetry as telemetry
 from swatplus_ai.llm.interface import LLMResponse, Message
 
 
@@ -29,6 +32,8 @@ class MockBackend:
         Number of characters per streamed delta. Keeps streaming tests
         realistic without coupling to any real provider's chunking.
     """
+
+    PROVIDER: ClassVar[str] = "mock"
 
     def __init__(
         self,
@@ -61,14 +66,41 @@ class MockBackend:
         max_tokens: int = 1024,
         temperature: float = 0.7,
     ) -> LLMResponse:
-        reply = self._next_reply(messages)
-        return LLMResponse(
-            text=reply,
-            model=model or self._model,
-            input_tokens=sum(len(m.content) for m in messages),
-            output_tokens=len(reply),
-            finish_reason="stop",
+        resolved_model = model or self._model
+        t0 = perf_counter()
+        try:
+            reply = self._next_reply(messages)
+            response = LLMResponse(
+                text=reply,
+                model=resolved_model,
+                input_tokens=sum(len(m.content) for m in messages),
+                output_tokens=len(reply),
+                finish_reason="stop",
+            )
+        except Exception as exc:
+            telemetry.emit(
+                "llm_call",
+                provider=self.PROVIDER,
+                model=resolved_model,
+                input_tokens=0,
+                output_tokens=0,
+                finish_reason="error",
+                duration_ms=round((perf_counter() - t0) * 1000),
+                streaming=False,
+                exception=type(exc).__name__,
+            )
+            raise
+        telemetry.emit(
+            "llm_call",
+            provider=self.PROVIDER,
+            model=response.model,
+            input_tokens=response.input_tokens,
+            output_tokens=response.output_tokens,
+            finish_reason=response.finish_reason,
+            duration_ms=round((perf_counter() - t0) * 1000),
+            streaming=False,
         )
+        return response
 
     async def stream(
         self,

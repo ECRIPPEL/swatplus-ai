@@ -14,10 +14,12 @@ Both classes expose a ``client`` injection point so tests can plug in
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from time import perf_counter
 from typing import Any, ClassVar
 
 import httpx
 
+import swatplus_ai.telemetry as telemetry
 from swatplus_ai.llm.backends._http import request_json, stream_sse
 from swatplus_ai.llm.interface import LLMError, LLMResponse, Message, split_system
 
@@ -37,6 +39,11 @@ class _BaseBackend:
     """
 
     DEFAULT_MODEL: ClassVar[str] = ""
+    # Provider tag for telemetry. Subclasses override; kept on the
+    # protocol class so both api-key and OAuth flavours of the same
+    # provider report the same ``provider`` value without each subclass
+    # re-declaring it (cf. the ``_AnthropicProtocol`` / OAuth split).
+    PROVIDER: ClassVar[str] = ""
 
     def __init__(self, *, client: httpx.AsyncClient | None = None) -> None:
         if client is None:
@@ -84,17 +91,45 @@ class _BaseBackend:
         max_tokens: int = 1024,
         temperature: float = 0.7,
     ) -> LLMResponse:
-        body = self._build_body(
-            messages, model or self.DEFAULT_MODEL, max_tokens, temperature, stream=False
+        resolved_model = model or self.DEFAULT_MODEL
+        body = self._build_body(messages, resolved_model, max_tokens, temperature, stream=False)
+        t0 = perf_counter()
+        try:
+            data = await request_json(
+                self._client,
+                "POST",
+                self._endpoint(),
+                headers=self._auth_headers(),
+                json_body=body,
+            )
+            response = self._parse_response(data)
+        except Exception as exc:
+            # Emit before re-raising so the failure is on disk even if
+            # the process dies inside the caller (JsonlFileSink flushes
+            # per line). Same pattern as parse_error in slice 4.5.2.
+            telemetry.emit(
+                "llm_call",
+                provider=self.PROVIDER,
+                model=resolved_model,
+                input_tokens=0,
+                output_tokens=0,
+                finish_reason="error",
+                duration_ms=round((perf_counter() - t0) * 1000),
+                streaming=False,
+                exception=type(exc).__name__,
+            )
+            raise
+        telemetry.emit(
+            "llm_call",
+            provider=self.PROVIDER,
+            model=response.model,
+            input_tokens=response.input_tokens,
+            output_tokens=response.output_tokens,
+            finish_reason=response.finish_reason,
+            duration_ms=round((perf_counter() - t0) * 1000),
+            streaming=False,
         )
-        data = await request_json(
-            self._client,
-            "POST",
-            self._endpoint(),
-            headers=self._auth_headers(),
-            json_body=body,
-        )
-        return self._parse_response(data)
+        return response
 
     async def stream(
         self,
@@ -128,6 +163,7 @@ class _AnthropicProtocol(_BaseBackend):
     """Anthropic Messages API wire protocol, auth-agnostic."""
 
     DEFAULT_MODEL: ClassVar[str] = "claude-haiku-4-5-20251001"
+    PROVIDER: ClassVar[str] = "anthropic"
     API_URL: ClassVar[str] = "https://api.anthropic.com/v1/messages"
     ANTHROPIC_VERSION: ClassVar[str] = "2023-06-01"
 
@@ -219,6 +255,7 @@ class _OpenAIProtocol(_BaseBackend):
     """OpenAI Chat Completions API wire protocol, auth-agnostic."""
 
     DEFAULT_MODEL: ClassVar[str] = "gpt-4o-mini"
+    PROVIDER: ClassVar[str] = "openai"
     API_URL: ClassVar[str] = "https://api.openai.com/v1/chat/completions"
 
     def _endpoint(self) -> str:
