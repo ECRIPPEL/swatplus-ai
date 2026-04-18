@@ -35,6 +35,7 @@ from __future__ import annotations
 import uuid
 import warnings
 from collections import deque
+from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 
@@ -63,6 +64,25 @@ def _session_id() -> str:
     if _SESSION_ID is None:
         _SESSION_ID = new_session_id()
     return _SESSION_ID
+
+
+def start_session(sink_factory: Callable[[str], Sink]) -> str:
+    """Mint a fresh session id, build a sink around it, and configure it.
+
+    One-shot helper for CLI boot: the caller needs the session id to
+    decide *where* the sink writes (session-scoped filename) while the
+    telemetry module needs that same id for every subsequent
+    :func:`emit`. Doing the two steps together removes the window where
+    a stray ``emit`` could fire against a half-configured module.
+
+    Returns the new session id so the caller can log it, display it, or
+    use it to locate the on-disk log.
+    """
+    global _SESSION_ID
+    session_id = new_session_id()
+    _SESSION_ID = session_id
+    configure(sink_factory(session_id))
+    return session_id
 
 
 def configure(sink: Sink) -> None:
@@ -138,4 +158,5 @@ __all__ = [
     "new_session_id",
     "redact",
     "set_enabled",
+    "start_session",
 ]
