@@ -129,9 +129,9 @@ def test_read_uru(uru_project: Path) -> None:
     # Cross-file wiring sanity: hru-data.hru.lu_mgt must resolve in landuse.lum.
     for row in p.hru_data.rows:
         if row.lu_mgt is not None:
-            assert (
-                p.landuse_lum.by_name(row.lu_mgt) is not None
-            ), f"hru-data references landuse {row.lu_mgt!r} missing from landuse.lum"
+            assert p.landuse_lum.by_name(row.lu_mgt) is not None, (
+                f"hru-data references landuse {row.lu_mgt!r} missing from landuse.lum"
+            )
     # hru-data.hru.soil must resolve in soils.sol.
     for row in p.hru_data.rows:
         if row.soil is not None:

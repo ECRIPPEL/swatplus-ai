@@ -20,6 +20,8 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from swatplus_ai.diagnostics.finding import Severity
+
 if TYPE_CHECKING:
     from swatplus_ai.parser.txtinout import TxtInOutProject
 
@@ -33,12 +35,20 @@ class CheckResult(BaseModel):
     ``"hru-data.hru:row=42"`` or ``"outputs.basin_wb_aa"``); ``evidence``
     supplies the substitution mapping for the rule's ``message`` template
     and is also attached verbatim to the finding for downstream callers.
+
+    ``severity`` is normally left at ``None``, in which case the engine
+    falls back to the rule's declared severity. Checks override it on a
+    per-result basis only when a single rule emits findings whose
+    seriousness depends on the branch that fired (e.g.
+    ``setup.sim_period_sanity`` treats an inverted year range as an
+    ``error`` but a merely-short span as a ``warning``).
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     location: str | None = None
     evidence: dict[str, Any] = Field(default_factory=dict)
+    severity: Severity | None = None
 
 
 CheckFn = Callable[

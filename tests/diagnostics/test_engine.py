@@ -119,10 +119,18 @@ def test_from_directory_missing_dir_raises(clean_registry: None, tmp_path: Path)
         DiagnosticEngine.from_directory(tmp_path / "nope")
 
 
-def test_from_builtin_rules_loads_empty_dir_cleanly(clean_registry: None) -> None:
+def test_from_builtin_rules_loads_setup_slice(clean_registry: None) -> None:
     engine = DiagnosticEngine.from_builtin_rules()
-    # Slice 4.1 ships rules/.gitkeep only; no rules, and construction must succeed.
-    assert engine.rules == ()
+    # Slice 4.2 ships five pre-run ``setup.*`` rules. Assert the exact
+    # set so accidental additions or deletions fail this test loudly.
+    ids = {rule.id for rule in engine.rules}
+    assert ids == {
+        "setup.files_present",
+        "setup.mgt_date_order",
+        "setup.object_count_consistency",
+        "setup.sim_period_sanity",
+        "setup.warmup_ratio",
+    }
 
 
 def test_engine_skips_rule_whose_requires_is_unresolved(

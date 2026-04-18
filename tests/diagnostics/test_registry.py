@@ -41,9 +41,20 @@ def test_check_result_defaults() -> None:
     cr = CheckResult()
     assert cr.location is None
     assert cr.evidence == {}
+    assert cr.severity is None
 
 
 def test_check_result_is_frozen() -> None:
     cr = CheckResult(location="loc", evidence={"k": 1})
     with pytest.raises(Exception):  # noqa: B017 — pydantic raises ValidationError
         cr.location = "other"  # type: ignore[misc]
+
+
+def test_check_result_severity_override_accepted() -> None:
+    cr = CheckResult(severity="warning")
+    assert cr.severity == "warning"
+
+
+def test_check_result_rejects_bad_severity() -> None:
+    with pytest.raises(Exception):  # noqa: B017 — pydantic raises ValidationError
+        CheckResult(severity="fatal")  # type: ignore[arg-type]

@@ -66,7 +66,7 @@ def _to_finding(rule: Rule, result: CheckResult) -> Finding:
     message = rule.message.format_map(result.evidence)
     return Finding(
         id=rule.id,
-        severity=rule.severity,
+        severity=result.severity if result.severity is not None else rule.severity,
         location=result.location,
         evidence=result.evidence,
         rule_ref=rule.id,

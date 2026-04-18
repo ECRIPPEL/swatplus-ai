@@ -14,6 +14,11 @@ Public surface:
 
 from __future__ import annotations
 
+# Side-effect import: loading the ``checks`` subpackage runs every
+# ``@register_check(...)`` decorator that backs a bundled YAML rule, so
+# ``DiagnosticEngine.from_builtin_rules()`` finds its check functions
+# without callers having to remember to import them.
+from swatplus_ai.diagnostics import checks as _checks  # noqa: F401
 from swatplus_ai.diagnostics.engine import DiagnosticEngine
 from swatplus_ai.diagnostics.finding import Finding
 from swatplus_ai.diagnostics.registry import CheckResult, register_check
