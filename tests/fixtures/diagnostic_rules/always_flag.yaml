@@ -1,0 +1,8 @@
+id: test.always_flag
+severity: warning
+stage: [setup]
+requires: []
+check: _test_always_flag
+message: >-
+  Synthetic rule that always flags; evidence value is {value}.
+references: [synthetic_ref]

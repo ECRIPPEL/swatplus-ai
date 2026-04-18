@@ -1,0 +1,6 @@
+id: test.requires_missing
+severity: error
+stage: [setup]
+requires: [no_such_project_attribute]
+check: _test_never_runs
+message: Should be skipped because ``requires`` is unsatisfied.

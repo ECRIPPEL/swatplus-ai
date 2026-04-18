@@ -1,0 +1,5 @@
+id: test.multi_result
+severity: warning
+stage: [setup]
+check: _test_multi_result
+message: Synthetic multi-result rule for item {name}.

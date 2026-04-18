@@ -1,0 +1,5 @@
+id: test.wrong_stage
+severity: info
+stage: [calibration]
+check: _test_always_flag
+message: Should not fire during the ``setup`` stage.
