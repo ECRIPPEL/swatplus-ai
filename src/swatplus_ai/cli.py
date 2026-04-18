@@ -6,6 +6,7 @@ import typer
 
 from swatplus_ai import __version__
 from swatplus_ai.telemetry.cli import app as telemetry_app
+from swatplus_ai.telemetry.logs_cli import app as logs_app
 
 app = typer.Typer(
     name="swatplus-ai",
@@ -13,6 +14,7 @@ app = typer.Typer(
     no_args_is_help=True,
 )
 app.add_typer(telemetry_app, name="telemetry")
+app.add_typer(logs_app, name="logs")
 
 
 @app.command()
