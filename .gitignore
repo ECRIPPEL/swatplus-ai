@@ -74,3 +74,6 @@ handoff_*.md
 .git-commit-msg*.tmp
 SHARED_CONTRACTS.md
 handoff_*.md
+
+# --- Per-project telemetry / cache dirs (never committed) ---
+.swatplus-ai/

@@ -5,12 +5,14 @@ from __future__ import annotations
 import typer
 
 from swatplus_ai import __version__
+from swatplus_ai.telemetry.cli import app as telemetry_app
 
 app = typer.Typer(
     name="swatplus-ai",
     help="AI assistant for SWAT+ model setup, calibration, and evaluation.",
     no_args_is_help=True,
 )
+app.add_typer(telemetry_app, name="telemetry")
 
 
 @app.command()
