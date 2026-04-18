@@ -14,4 +14,8 @@ convention documented in ``swatplus-ai_architecture.md``.
 
 from __future__ import annotations
 
+from swatplus_ai.diagnostics.checks import chan as _chan  # noqa: F401 — side-effect import
+from swatplus_ai.diagnostics.checks import hru as _hru  # noqa: F401 — side-effect import
 from swatplus_ai.diagnostics.checks import setup as _setup  # noqa: F401 — side-effect import
+from swatplus_ai.diagnostics.checks import wb as _wb  # noqa: F401 — side-effect import
+from swatplus_ai.diagnostics.checks import wx as _wx  # noqa: F401 — side-effect import

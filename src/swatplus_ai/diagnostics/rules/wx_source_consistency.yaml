@@ -1,0 +1,7 @@
+id: wx.source_consistency
+severity: error
+stage: [setup]
+requires: [weather_sta]
+check: wx_source_consistency
+message: "{reason}"
+references: []

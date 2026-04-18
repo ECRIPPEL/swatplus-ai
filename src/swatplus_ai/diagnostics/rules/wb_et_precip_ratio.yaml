@@ -1,0 +1,7 @@
+id: wb.et_precip_ratio
+severity: warning
+stage: [evaluation]
+requires: [outputs.basin_wb_aa]
+check: wb_et_precip_ratio
+message: "{reason}"
+references: []

@@ -119,17 +119,24 @@ def test_from_directory_missing_dir_raises(clean_registry: None, tmp_path: Path)
         DiagnosticEngine.from_directory(tmp_path / "nope")
 
 
-def test_from_builtin_rules_loads_setup_slice(clean_registry: None) -> None:
+def test_from_builtin_rules_loads_module_1_set(clean_registry: None) -> None:
     engine = DiagnosticEngine.from_builtin_rules()
-    # Slice 4.2 ships five pre-run ``setup.*`` rules. Assert the exact
-    # set so accidental additions or deletions fail this test loudly.
+    # Slices 4.2 + 4.3 together ship the ten Module-1 rules. Assert the
+    # exact set so accidental additions or deletions fail this test
+    # loudly. The per-rule detail lives in dedicated test files; this
+    # assertion only pins the id set.
     ids = {rule.id for rule in engine.rules}
     assert ids == {
+        "chan.routing_topology",
+        "hru.fk_consistency",
         "setup.files_present",
         "setup.mgt_date_order",
         "setup.object_count_consistency",
+        "setup.pet_method_vs_climate",
         "setup.sim_period_sanity",
         "setup.warmup_ratio",
+        "wb.et_precip_ratio",
+        "wx.source_consistency",
     }
 
 
@@ -197,3 +204,45 @@ def test_engine_check_requires_resolves_outputs_namespace(
     # the check fires exactly once.
     assert len(findings) == 1
     assert fired == [minimal_project.name]
+
+
+def test_engine_check_requires_dotted_path_runs_and_skips(
+    clean_registry: None, tmp_path: Path, minimal_project: Path
+) -> None:
+    fired: list[str] = []
+
+    @register_check("_test_needs_dotted")
+    def _needs(project: TxtInOutProject) -> CheckResult:
+        fired.append("ran")
+        return CheckResult(evidence={})
+
+    body_present = "\n".join(
+        [
+            "id: test.needs_dotted_present",
+            "severity: info",
+            "stage: [setup]",
+            "requires: [outputs.basin_wb_aa]",
+            "check: _test_needs_dotted",
+            "message: dotted present",
+        ]
+    )
+    body_absent = "\n".join(
+        [
+            "id: test.needs_dotted_absent",
+            "severity: info",
+            "stage: [setup]",
+            "requires: [outputs.does_not_exist]",
+            "check: _test_needs_dotted",
+            "message: dotted absent",
+        ]
+    )
+    (tmp_path / "present.yaml").write_text(body_present, encoding="utf-8")
+    (tmp_path / "absent.yaml").write_text(body_absent, encoding="utf-8")
+    engine = DiagnosticEngine.from_directory(tmp_path)
+    project = TxtInOutProject.read(minimal_project)
+    findings = engine.run(project)
+    # Dotted path to an existing DataFrame resolves → check fires; dotted
+    # path to a nonexistent attribute bails out silently in the requires
+    # gate, so the second rule is skipped.
+    assert [f.id for f in findings] == ["test.needs_dotted_present"]
+    assert fired == ["ran"]

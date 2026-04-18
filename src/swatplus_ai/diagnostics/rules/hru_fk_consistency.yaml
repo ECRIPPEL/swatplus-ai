@@ -1,0 +1,7 @@
+id: hru.fk_consistency
+severity: error
+stage: [setup]
+requires: [hru_data, landuse_lum, soils_sol, topography_hyd, hydrology_hyd]
+check: hru_fk_consistency
+message: "hru-data.hru row {row_id}: {field}={value!r} has no match in {target}"
+references: []

@@ -1,0 +1,7 @@
+id: chan.routing_topology
+severity: error
+stage: [setup]
+requires: [chandeg_con]
+check: chan_routing_topology
+message: "{reason}"
+references: []

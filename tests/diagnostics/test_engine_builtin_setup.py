@@ -1,10 +1,11 @@
 """End-to-end tests for ``DiagnosticEngine.from_builtin_rules()`` on the
-slice-4.2 ``setup.*`` rule set.
+Module-1 rule set closed out in slice 4.3.
 
 Covers what the per-rule files cannot: that no two rules collide, that a
 clean project produces zero findings, that a deliberately-broken project
-fires exactly the five expected ids, and that rules tagged ``setup`` are
-correctly excluded from ``evaluation`` runs.
+fires exactly the five expected ``setup.*`` ids, and that stage
+filtering correctly separates pre-run (``setup``) from post-run
+(``evaluation``) rules.
 """
 
 from __future__ import annotations
@@ -16,13 +17,24 @@ from swatplus_ai.parser.inputs.management_sch import (
 )
 from swatplus_ai.parser.txtinout import TxtInOutProject
 
-_EXPECTED_IDS = {
+_EXPECTED_RULE_IDS = {
+    "chan.routing_topology",
+    "hru.fk_consistency",
     "setup.files_present",
     "setup.mgt_date_order",
     "setup.object_count_consistency",
+    "setup.pet_method_vs_climate",
     "setup.sim_period_sanity",
     "setup.warmup_ratio",
+    "wb.et_precip_ratio",
+    "wx.source_consistency",
 }
+
+
+def test_from_builtin_rules_loads_all_ten() -> None:
+    engine = DiagnosticEngine.from_builtin_rules()
+    ids = {rule.id for rule in engine.rules}
+    assert ids == _EXPECTED_RULE_IDS
 
 
 def test_clean_project_produces_no_findings(
@@ -33,20 +45,15 @@ def test_clean_project_produces_no_findings(
     assert findings == []
 
 
-def test_broken_project_fires_all_five_rules(
+def test_broken_project_fires_all_five_setup_rules(
     clean_setup_project: TxtInOutProject,
 ) -> None:
-    # 1. files_present — drop object_cnt.
-    # 2. sim_period_sanity — invert the year range.
-    # 3. warmup_ratio — non-zero nyskip is irrelevant; inversion takes
-    #    precedence. Use a cleanly-long span with bad nyskip so warm-up
-    #    fires independently.
-    # A single project with all five mismatches can't also invert the
-    # years (that would disable warmup_ratio). Instead, use a very long
-    # span with a wasteful nyskip so warm-up fires, zero-length single
-    # year for sim-period, mismatched object counts, and an out-of-order
-    # schedule — plus delete object_cnt AFTER reading it to trigger the
-    # files-present rule while still keeping counts on the cloned one.
+    # A single project with all five setup.* mismatches can't also invert
+    # the years (that would disable warmup_ratio). Instead, use a very
+    # long span with a wasteful nyskip so warm-up fires, zero-length
+    # single year for sim-period, mismatched object counts, and an
+    # out-of-order schedule — plus drop codes_bsn so files-present fires
+    # the "file present but unparseable" scenario it targets.
     bad_time = clean_setup_project.time_sim.model_copy(
         update={"yrc_start": 2005, "yrc_end": 2005, "day_start": 200, "day_end": 100}
     )
@@ -79,13 +86,6 @@ def test_broken_project_fires_all_five_rules(
         autos=(),
     )
     bad_mgt = clean_setup_project.management_sch.model_copy(update={"schedules": (bad_schedule,)})
-    # Drop file_cio via reference to still have object_cnt-driven rules
-    # fire (we deliberately keep object_cnt present so the ``requires``
-    # gate lets setup.object_count_consistency run). files_present is
-    # instead fired by driving nyskip high enough to also fire warm-up,
-    # and by blanking ``codes_bsn`` which is required on the parser side
-    # but tolerated as ``None`` on the pydantic model — exactly the
-    # "file present but unparseable" scenario the rule targets.
     broken = clean_setup_project.model_copy(
         update={
             "time_sim": bad_time,
@@ -98,12 +98,21 @@ def test_broken_project_fires_all_five_rules(
     engine = DiagnosticEngine.from_builtin_rules()
     findings = engine.run(broken, stage="setup")
     ids = {f.id for f in findings}
-    assert ids == _EXPECTED_IDS
+    assert ids == {
+        "setup.files_present",
+        "setup.mgt_date_order",
+        "setup.object_count_consistency",
+        "setup.sim_period_sanity",
+        "setup.warmup_ratio",
+    }
 
 
-def test_evaluation_stage_emits_nothing(
+def test_evaluation_stage_only_runs_evaluation_rules(
     clean_setup_project: TxtInOutProject,
 ) -> None:
+    # On a project with no outputs loaded, the evaluation-stage rule's
+    # `requires` gate skips it — so the stage filter produces an empty
+    # list exactly like setup did on a clean project.
     engine = DiagnosticEngine.from_builtin_rules()
     assert engine.run(clean_setup_project, stage="evaluation") == []
 

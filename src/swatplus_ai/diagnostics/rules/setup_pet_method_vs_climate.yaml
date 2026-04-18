@@ -1,0 +1,7 @@
+id: setup.pet_method_vs_climate
+severity: warning
+stage: [setup]
+requires: [codes_bsn, weather_sta]
+check: setup_pet_method_vs_climate
+message: "{reason}"
+references: []

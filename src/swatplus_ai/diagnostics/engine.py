@@ -16,7 +16,9 @@ simulation has been run), runs each check function, and wraps each
 (``time_sim``, ``print_prt`` …) and fields on the nested
 ``project.outputs`` namespace (``basin_wb_aa``, ``channel_sd_aa`` …),
 so YAML authors can use either flat or nested names without worrying
-which namespace a parser landed in.
+which namespace a parser landed in. Dotted forms (``outputs.basin_wb_aa``)
+are also accepted and walked attribute-by-attribute, so rules that want
+to be explicit about where a dependency lives can be.
 
 **Fail-loud at construction:** if any rule references a check name that
 isn't in the registry, or any rule id is duplicated across files,
@@ -48,12 +50,23 @@ def _builtin_rules_dir() -> Path:
 def _unsatisfied(project: TxtInOutProject, attr: str) -> bool:
     """Return True when ``attr`` is absent or ``None`` on the project.
 
-    Looks first at top-level project fields, then falls back to the
-    nested ``project.outputs`` namespace. Using identity checks
-    (``is None`` / ``is _MISSING``) rather than ``value in (None, ...)``
-    matters because some fields hold :class:`pandas.DataFrame`, whose
+    Three resolution paths, tried in order: a dotted path walked
+    attribute-by-attribute (``outputs.basin_wb_aa``); a top-level
+    project field (``time_sim``); and — as a convenience so YAML can
+    stay flat — the nested ``project.outputs`` namespace
+    (``basin_wb_aa``). Using identity checks (``is None`` /
+    ``is _MISSING``) rather than ``value in (None, ...)`` matters
+    because some fields hold :class:`pandas.DataFrame`, whose
     ``__eq__`` would raise on a value-membership test.
     """
+    if "." in attr:
+        value: object = project
+        for part in attr.split("."):
+            value = getattr(value, part, _MISSING)
+            if value is _MISSING or value is None:
+                return True
+        return False
+
     value = getattr(project, attr, _MISSING)
     if value is _MISSING:
         outputs = getattr(project, "outputs", None)

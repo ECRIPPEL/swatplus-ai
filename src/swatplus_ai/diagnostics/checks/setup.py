@@ -254,10 +254,93 @@ def setup_object_count_consistency(project: TxtInOutProject) -> list[CheckResult
     return results
 
 
+_PET_METHOD_NAME: dict[int, str] = {
+    1: "Penman-Monteith",
+    2: "Priestley-Taylor",
+    3: "Hargreaves",
+    4: "read-from-file",
+}
+
+_PET_REQUIRED_VARS: dict[int, tuple[str, ...]] = {
+    1: ("slr", "hmd", "wnd"),
+    2: ("slr", "hmd"),
+    # pet=3 (Hargreaves) needs temperature only — always available — so the rule
+    # is vacuously satisfied and the check emits nothing.
+    3: (),
+    # pet=4 handled separately: every station must point at a per-station pet file.
+    4: (),
+}
+
+
+def _pet_var_is_simulated(value: str | None) -> bool:
+    """Weather-station cell is ``sim`` (WGN-generated), not observed."""
+    return value == "sim"
+
+
+@register_check("setup_pet_method_vs_climate")
+def setup_pet_method_vs_climate(project: TxtInOutProject) -> list[CheckResult]:
+    """Warn when the chosen PET method has no observed inputs to feed it.
+
+    PM / Priestley-Taylor need solar / humidity / wind and degrade to
+    pure WGN-driven output if every station reports ``sim`` for those
+    variables. Hargreaves needs only temperature (always present in
+    SWAT+ projects), so it's vacuously satisfied. ``pet=4`` (read-from-
+    file) needs an explicit per-station pet file on every station.
+    """
+    codes = project.codes_bsn
+    sta = project.weather_sta
+    if not sta.rows:
+        return []
+    pet = codes.pet
+    method = _PET_METHOD_NAME.get(pet, f"code={pet}")
+    location = "codes.bsn"
+    results: list[CheckResult] = []
+
+    if pet == 4:
+        missing = [r.name for r in sta.rows if r.pet is None or _pet_var_is_simulated(r.pet)]
+        if missing:
+            reason = (
+                f"codes.bsn pet={pet} ({method}) expects each station to name a pet file, "
+                f"but {len(missing)} station(s) do not: {', '.join(missing)}"
+            )
+            results.append(
+                CheckResult(
+                    location=location,
+                    evidence={
+                        "reason": reason,
+                        "pet": pet,
+                        "method": method,
+                        "stations": list(missing),
+                    },
+                ),
+            )
+        return results
+
+    for var in _PET_REQUIRED_VARS.get(pet, ()):
+        if all(_pet_var_is_simulated(getattr(row, var)) for row in sta.rows):
+            reason = (
+                f"codes.bsn pet={pet} ({method}) needs observed {var}, but every weather "
+                f"station reports {var}='sim'"
+            )
+            results.append(
+                CheckResult(
+                    location=location,
+                    evidence={
+                        "reason": reason,
+                        "pet": pet,
+                        "method": method,
+                        "variable": var,
+                    },
+                ),
+            )
+    return results
+
+
 __all__ = [
     "setup_files_present",
     "setup_mgt_date_order",
     "setup_object_count_consistency",
+    "setup_pet_method_vs_climate",
     "setup_sim_period_sanity",
     "setup_warmup_ratio",
 ]
