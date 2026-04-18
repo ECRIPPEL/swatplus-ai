@@ -29,9 +29,11 @@ misconfiguration never silently produces an empty report.
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from swatplus_ai import telemetry
 from swatplus_ai.diagnostics.finding import Finding
 from swatplus_ai.diagnostics.registry import CheckResult, get_check
 from swatplus_ai.diagnostics.rule import Rule
@@ -130,15 +132,41 @@ class DiagnosticEngine:
             if stage not in rule.stage:
                 continue
             if any(_unsatisfied(project, attr) for attr in rule.requires):
+                telemetry.emit(
+                    "rule_evaluated",
+                    rule_id=rule.id,
+                    stage=stage,
+                    finding_count=0,
+                    duration_ms=0,
+                    skipped=True,
+                )
                 continue
             fn = get_check(rule.check)
+            t0 = time.perf_counter()
             result = fn(project)
-            if result is None:
-                continue
-            if isinstance(result, CheckResult):
-                findings.append(_to_finding(rule, result))
-            else:
-                findings.extend(_to_finding(rule, r) for r in result)
+            rule_findings: list[Finding] = []
+            if result is not None:
+                if isinstance(result, CheckResult):
+                    rule_findings.append(_to_finding(rule, result))
+                else:
+                    rule_findings.extend(_to_finding(rule, r) for r in result)
+            duration_ms = round((time.perf_counter() - t0) * 1000)
+            # Emit per-finding events before the rule_evaluated summary so a
+            # log reader sees N finding_emitted followed by one rule_evaluated.
+            for finding in rule_findings:
+                telemetry.emit(
+                    "finding_emitted",
+                    rule_id=rule.id,
+                    severity=finding.severity,
+                )
+            telemetry.emit(
+                "rule_evaluated",
+                rule_id=rule.id,
+                stage=stage,
+                finding_count=len(rule_findings),
+                duration_ms=duration_ms,
+            )
+            findings.extend(rule_findings)
         return findings
 
 

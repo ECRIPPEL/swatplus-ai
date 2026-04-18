@@ -65,6 +65,14 @@ def test_short_identifier_passes_through() -> None:
     assert redact("sta001.pcp") == "sta001.pcp"
 
 
+def test_long_digitless_identifier_passes_through() -> None:
+    # 24+ chars but all letters + underscore — looks like a long Python
+    # symbol, not a secret. Real API keys / SHA / base64 always contain
+    # digits, so the token regex requires one before redacting.
+    assert redact("setup.object_count_consistency") == "setup.object_count_consistency"
+    assert redact("class BasinSimulationPipelineConfig:") == "class BasinSimulationPipelineConfig:"
+
+
 def test_url_is_not_misread_as_posix_path() -> None:
     # Scheme-prefixed URLs must not trigger path redaction (their leading
     # ``/`` is preceded by ``:`` or another ``/``).

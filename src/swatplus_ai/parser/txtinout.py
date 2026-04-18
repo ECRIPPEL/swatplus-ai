@@ -35,12 +35,14 @@ reservoir is actually modeled.
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable
 from pathlib import Path
-from typing import TypeVar
+from typing import Any, TypeVar
 
 from pydantic import BaseModel, ConfigDict
 
+from swatplus_ai import telemetry
 from swatplus_ai.parser._base import ParseError
 from swatplus_ai.parser.inputs.aqu_catunit_ele import AquCatunitEle, parse_aqu_catunit_ele
 from swatplus_ai.parser.inputs.aquifer_aqu import AquiferAqu, parse_aquifer_aqu
@@ -110,10 +112,46 @@ from swatplus_ai.parser.topology import TopologyAccessor
 _T = TypeVar("_T", bound=ParsedFile)
 
 
-def _optional(folder: Path, name: str, parser: Callable[[Path], _T]) -> _T | None:
-    """Parse ``folder / name`` if it exists, else return ``None``."""
+def _row_count(result: ParsedFile) -> int | None:
+    """Best-effort row count for a parsed model; ``None`` for single-row files."""
+    rows = getattr(result, "rows", None)
+    if isinstance(rows, tuple):
+        return len(rows)
+    filenames = getattr(result, "filenames", None)
+    if isinstance(filenames, tuple):
+        return len(filenames)
+    return None
+
+
+def _timed(name: str, parser: Callable[[Path], _T], path: Path) -> _T:
+    """Parse ``path``, emitting ``file_parsed`` on success or ``parse_error`` on failure."""
+    t0 = time.perf_counter()
+    try:
+        result = parser(path)
+    except Exception as exc:
+        fields: dict[str, Any] = {"filename": name, "exception": type(exc).__name__}
+        # ParseError carries the 1-based line number of the offending line;
+        # emit it so log readers can jump straight to the problem.
+        if isinstance(exc, ParseError):
+            fields["line"] = exc.line_no
+        telemetry.emit("parse_error", **fields)
+        raise
+    duration_ms = round((time.perf_counter() - t0) * 1000)
+    telemetry.emit(
+        "file_parsed",
+        filename=name,
+        rows=_row_count(result),
+        duration_ms=duration_ms,
+    )
+    return result
+
+
+def _timed_optional(folder: Path, name: str, parser: Callable[[Path], _T]) -> _T | None:
+    """Parse ``folder / name`` with telemetry if present, else return ``None`` silently."""
     p = folder / name
-    return parser(p) if p.is_file() else None
+    if not p.is_file():
+        return None
+    return _timed(name, parser, p)
 
 
 class TxtInOutProject(BaseModel):
@@ -242,73 +280,83 @@ class TxtInOutProject(BaseModel):
 
         return cls(
             folder=folder,
-            time_sim=parse_time_sim(folder / "time.sim"),
-            print_prt=parse_print_prt(folder / "print.prt"),
-            file_cio=parse_file_cio(folder / "file.cio"),
-            object_cnt=_optional(folder, "object.cnt", parse_object_cnt),
-            codes_bsn=parse_codes_bsn(folder / "codes.bsn"),
-            parameters_bsn=parse_parameters_bsn(folder / "parameters.bsn"),
-            hydrology_hyd=parse_hydrology_hyd(folder / "hydrology.hyd"),
-            topography_hyd=parse_topography_hyd(folder / "topography.hyd"),
-            hru_data=parse_hru_data(folder / "hru-data.hru"),
-            landuse_lum=parse_landuse_lum(folder / "landuse.lum"),
-            plant_ini=parse_plant_ini(folder / "plant.ini"),
-            soils_sol=parse_soils_sol(folder / "soils.sol"),
-            nutrients_sol=_optional(folder, "nutrients.sol", parse_nutrients_sol),
-            management_sch=parse_management_sch(folder / "management.sch"),
-            fertilizer_frt=_optional(folder, "fertilizer.frt", parse_fertilizer_frt),
-            tillage_til=_optional(folder, "tillage.til", parse_tillage_til),
-            pesticide_pes=_optional(folder, "pesticide.pes", parse_pesticide_pes),
-            harv_ops=_optional(folder, "harv.ops", parse_harv_ops),
-            graze_ops=_optional(folder, "graze.ops", parse_graze_ops),
-            irr_ops=_optional(folder, "irr.ops", parse_irr_ops),
-            fire_ops=_optional(folder, "fire.ops", parse_fire_ops),
-            sweep_ops=_optional(folder, "sweep.ops", parse_sweep_ops),
-            chem_app_ops=_optional(folder, "chem_app.ops", parse_chem_app_ops),
-            cntable_lum=_optional(folder, "cntable.lum", parse_cntable_lum),
-            cons_practice_lum=_optional(folder, "cons_practice.lum", parse_cons_practice_lum),
-            ovn_table_lum=_optional(folder, "ovn_table.lum", parse_ovn_table_lum),
-            hru_con=_optional(folder, "hru.con", parse_hru_con),
-            aquifer_con=_optional(folder, "aquifer.con", parse_aquifer_con),
-            chandeg_con=_optional(folder, "chandeg.con", parse_chandeg_con),
-            reservoir_con=_optional(folder, "reservoir.con", parse_reservoir_con),
-            rout_unit_con=_optional(folder, "rout_unit.con", parse_rout_unit_con),
-            ls_unit_def=_optional(folder, "ls_unit.def", parse_ls_unit_def),
-            ls_unit_ele=_optional(folder, "ls_unit.ele", parse_ls_unit_ele),
-            rout_unit_def=_optional(folder, "rout_unit.def", parse_rout_unit_def),
-            rout_unit_ele=_optional(folder, "rout_unit.ele", parse_rout_unit_ele),
-            rout_unit_rtu=_optional(folder, "rout_unit.rtu", parse_rout_unit_rtu),
-            aqu_catunit_ele=_optional(folder, "aqu_catunit.ele", parse_aqu_catunit_ele),
-            aquifer_aqu=_optional(folder, "aquifer.aqu", parse_aquifer_aqu),
-            initial_aqu=_optional(folder, "initial.aqu", parse_initial_any),
-            channel_lte_cha=_optional(folder, "channel-lte.cha", parse_channel_lte_cha),
-            hyd_sed_lte_cha=_optional(folder, "hyd-sed-lte.cha", parse_hyd_sed_lte_cha),
-            nutrients_cha=_optional(folder, "nutrients.cha", parse_nutrients_cha),
-            initial_cha=_optional(folder, "initial.cha", parse_initial_any),
-            reservoir_res=_optional(folder, "reservoir.res", parse_reservoir_res),
-            hydrology_res=_optional(folder, "hydrology.res", parse_hydrology_res),
-            nutrients_res=_optional(folder, "nutrients.res", parse_nutrients_res),
-            sediment_res=_optional(folder, "sediment.res", parse_sediment_res),
-            initial_res=_optional(folder, "initial.res", parse_initial_any),
-            wetland_wet=_optional(folder, "wetland.wet", parse_wetland_wet),
-            hydrology_wet=_optional(folder, "hydrology.wet", parse_hydrology_wet),
-            soil_plant_ini=_optional(folder, "soil_plant.ini", parse_soil_plant_ini),
-            om_water_ini=_optional(folder, "om_water.ini", parse_om_water_ini),
-            cal_parms_cal=_optional(folder, "cal_parms.cal", parse_cal_parms_cal),
-            codes_sft=_optional(folder, "codes.sft", parse_codes_sft),
-            wb_parms_sft=_optional(folder, "wb_parms.sft", parse_wb_parms_sft),
-            water_balance_sft=_optional(folder, "water_balance.sft", parse_water_balance_sft),
-            plant_gro_sft=_optional(folder, "plant_gro.sft", parse_plant_gro_sft),
-            plant_parms_sft=_optional(folder, "plant_parms.sft", parse_plant_parms_sft),
-            lum_dtl=_optional(folder, "lum.dtl", parse_lum_dtl),
-            res_rel_dtl=_optional(folder, "res_rel.dtl", parse_res_rel_dtl),
-            weather_sta=parse_weather_sta_cli(folder / "weather-sta.cli"),
-            weather_wgn=parse_weather_wgn_cli(folder / "weather-wgn.cli"),
-            pcp_cli=_optional(folder, "pcp.cli", parse_weather_cli),
-            tmp_cli=_optional(folder, "tmp.cli", parse_weather_cli),
-            slr_cli=_optional(folder, "slr.cli", parse_weather_cli),
-            hmd_cli=_optional(folder, "hmd.cli", parse_weather_cli),
-            wnd_cli=_optional(folder, "wnd.cli", parse_weather_cli),
+            time_sim=_timed("time.sim", parse_time_sim, folder / "time.sim"),
+            print_prt=_timed("print.prt", parse_print_prt, folder / "print.prt"),
+            file_cio=_timed("file.cio", parse_file_cio, folder / "file.cio"),
+            object_cnt=_timed_optional(folder, "object.cnt", parse_object_cnt),
+            codes_bsn=_timed("codes.bsn", parse_codes_bsn, folder / "codes.bsn"),
+            parameters_bsn=_timed(
+                "parameters.bsn", parse_parameters_bsn, folder / "parameters.bsn"
+            ),
+            hydrology_hyd=_timed("hydrology.hyd", parse_hydrology_hyd, folder / "hydrology.hyd"),
+            topography_hyd=_timed(
+                "topography.hyd", parse_topography_hyd, folder / "topography.hyd"
+            ),
+            hru_data=_timed("hru-data.hru", parse_hru_data, folder / "hru-data.hru"),
+            landuse_lum=_timed("landuse.lum", parse_landuse_lum, folder / "landuse.lum"),
+            plant_ini=_timed("plant.ini", parse_plant_ini, folder / "plant.ini"),
+            soils_sol=_timed("soils.sol", parse_soils_sol, folder / "soils.sol"),
+            nutrients_sol=_timed_optional(folder, "nutrients.sol", parse_nutrients_sol),
+            management_sch=_timed(
+                "management.sch", parse_management_sch, folder / "management.sch"
+            ),
+            fertilizer_frt=_timed_optional(folder, "fertilizer.frt", parse_fertilizer_frt),
+            tillage_til=_timed_optional(folder, "tillage.til", parse_tillage_til),
+            pesticide_pes=_timed_optional(folder, "pesticide.pes", parse_pesticide_pes),
+            harv_ops=_timed_optional(folder, "harv.ops", parse_harv_ops),
+            graze_ops=_timed_optional(folder, "graze.ops", parse_graze_ops),
+            irr_ops=_timed_optional(folder, "irr.ops", parse_irr_ops),
+            fire_ops=_timed_optional(folder, "fire.ops", parse_fire_ops),
+            sweep_ops=_timed_optional(folder, "sweep.ops", parse_sweep_ops),
+            chem_app_ops=_timed_optional(folder, "chem_app.ops", parse_chem_app_ops),
+            cntable_lum=_timed_optional(folder, "cntable.lum", parse_cntable_lum),
+            cons_practice_lum=_timed_optional(folder, "cons_practice.lum", parse_cons_practice_lum),
+            ovn_table_lum=_timed_optional(folder, "ovn_table.lum", parse_ovn_table_lum),
+            hru_con=_timed_optional(folder, "hru.con", parse_hru_con),
+            aquifer_con=_timed_optional(folder, "aquifer.con", parse_aquifer_con),
+            chandeg_con=_timed_optional(folder, "chandeg.con", parse_chandeg_con),
+            reservoir_con=_timed_optional(folder, "reservoir.con", parse_reservoir_con),
+            rout_unit_con=_timed_optional(folder, "rout_unit.con", parse_rout_unit_con),
+            ls_unit_def=_timed_optional(folder, "ls_unit.def", parse_ls_unit_def),
+            ls_unit_ele=_timed_optional(folder, "ls_unit.ele", parse_ls_unit_ele),
+            rout_unit_def=_timed_optional(folder, "rout_unit.def", parse_rout_unit_def),
+            rout_unit_ele=_timed_optional(folder, "rout_unit.ele", parse_rout_unit_ele),
+            rout_unit_rtu=_timed_optional(folder, "rout_unit.rtu", parse_rout_unit_rtu),
+            aqu_catunit_ele=_timed_optional(folder, "aqu_catunit.ele", parse_aqu_catunit_ele),
+            aquifer_aqu=_timed_optional(folder, "aquifer.aqu", parse_aquifer_aqu),
+            initial_aqu=_timed_optional(folder, "initial.aqu", parse_initial_any),
+            channel_lte_cha=_timed_optional(folder, "channel-lte.cha", parse_channel_lte_cha),
+            hyd_sed_lte_cha=_timed_optional(folder, "hyd-sed-lte.cha", parse_hyd_sed_lte_cha),
+            nutrients_cha=_timed_optional(folder, "nutrients.cha", parse_nutrients_cha),
+            initial_cha=_timed_optional(folder, "initial.cha", parse_initial_any),
+            reservoir_res=_timed_optional(folder, "reservoir.res", parse_reservoir_res),
+            hydrology_res=_timed_optional(folder, "hydrology.res", parse_hydrology_res),
+            nutrients_res=_timed_optional(folder, "nutrients.res", parse_nutrients_res),
+            sediment_res=_timed_optional(folder, "sediment.res", parse_sediment_res),
+            initial_res=_timed_optional(folder, "initial.res", parse_initial_any),
+            wetland_wet=_timed_optional(folder, "wetland.wet", parse_wetland_wet),
+            hydrology_wet=_timed_optional(folder, "hydrology.wet", parse_hydrology_wet),
+            soil_plant_ini=_timed_optional(folder, "soil_plant.ini", parse_soil_plant_ini),
+            om_water_ini=_timed_optional(folder, "om_water.ini", parse_om_water_ini),
+            cal_parms_cal=_timed_optional(folder, "cal_parms.cal", parse_cal_parms_cal),
+            codes_sft=_timed_optional(folder, "codes.sft", parse_codes_sft),
+            wb_parms_sft=_timed_optional(folder, "wb_parms.sft", parse_wb_parms_sft),
+            water_balance_sft=_timed_optional(folder, "water_balance.sft", parse_water_balance_sft),
+            plant_gro_sft=_timed_optional(folder, "plant_gro.sft", parse_plant_gro_sft),
+            plant_parms_sft=_timed_optional(folder, "plant_parms.sft", parse_plant_parms_sft),
+            lum_dtl=_timed_optional(folder, "lum.dtl", parse_lum_dtl),
+            res_rel_dtl=_timed_optional(folder, "res_rel.dtl", parse_res_rel_dtl),
+            weather_sta=_timed(
+                "weather-sta.cli", parse_weather_sta_cli, folder / "weather-sta.cli"
+            ),
+            weather_wgn=_timed(
+                "weather-wgn.cli", parse_weather_wgn_cli, folder / "weather-wgn.cli"
+            ),
+            pcp_cli=_timed_optional(folder, "pcp.cli", parse_weather_cli),
+            tmp_cli=_timed_optional(folder, "tmp.cli", parse_weather_cli),
+            slr_cli=_timed_optional(folder, "slr.cli", parse_weather_cli),
+            hmd_cli=_timed_optional(folder, "hmd.cli", parse_weather_cli),
+            wnd_cli=_timed_optional(folder, "wnd.cli", parse_weather_cli),
             outputs=OutputsNamespace.read(folder),
         )
 

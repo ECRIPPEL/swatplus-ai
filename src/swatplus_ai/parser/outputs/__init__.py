@@ -18,12 +18,15 @@ that only prints a subset of outputs, is still parseable.
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 from pydantic import BaseModel, ConfigDict
 
+from swatplus_ai import telemetry
 from swatplus_ai.parser.outputs._base import OutputParseError
 from swatplus_ai.parser.outputs.aquifer_aa import parse_aquifer_aa
 from swatplus_ai.parser.outputs.basin_ls_aa import parse_basin_ls_aa
@@ -43,9 +46,30 @@ from swatplus_ai.parser.outputs.wetland_aa import parse_wetland_aa
 def _optional_output(
     folder: Path, name: str, parser: Callable[[Path], pd.DataFrame]
 ) -> pd.DataFrame | None:
-    """Parse ``folder / name`` into a DataFrame if it exists, else ``None``."""
+    """Parse ``folder / name`` into a DataFrame if it exists, else ``None``.
+
+    Emits a ``file_parsed`` (or ``parse_error``) telemetry event when the
+    file is present. Absent optional output files stay silent — a project
+    whose simulation hasn't been run shouldn't fill the log with misses.
+    """
     p = folder / name
-    return parser(p) if p.is_file() else None
+    if not p.is_file():
+        return None
+    t0 = time.perf_counter()
+    try:
+        df = parser(p)
+    except Exception as exc:
+        fields: dict[str, Any] = {"filename": name, "exception": type(exc).__name__}
+        telemetry.emit("parse_error", **fields)
+        raise
+    duration_ms = round((time.perf_counter() - t0) * 1000)
+    telemetry.emit(
+        "file_parsed",
+        filename=name,
+        rows=len(df) if df is not None else None,
+        duration_ms=duration_ms,
+    )
+    return df
 
 
 class OutputsNamespace(BaseModel):

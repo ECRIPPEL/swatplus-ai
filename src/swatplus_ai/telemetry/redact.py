@@ -13,9 +13,13 @@ Patterns, applied to every string in order:
    → ``<REDACTED>``.
 2. Email addresses → ``<REDACTED>``.
 3. Absolute paths (Windows ``C:\\…`` or POSIX ``/foo/bar/…``) → basename.
-4. Long opaque hex / base64 tokens (≥24 chars, word-bounded) →
-   ``<REDACTED>``. Runs last so it can't swallow basenames or
-   path-internal components that have already been rewritten.
+4. Long opaque hex / base64 tokens (≥24 chars, word-bounded, with at
+   least one digit inside the run) → ``<REDACTED>``. Runs last so it
+   can't swallow basenames or path-internal components that have
+   already been rewritten. The digit requirement lets long symbolic
+   identifiers (rule ids like ``setup.object_count_consistency``,
+   class names like ``BasinSimulationPipelineConfig``) pass through —
+   real API keys, SHA hashes, and base64 tokens always contain digits.
 
 Non-string scalars (``int``, ``float``, ``bool``, ``None``) pass through
 unchanged; :class:`pathlib.Path` objects are shortened to their basename
@@ -42,8 +46,14 @@ _WIN_PATH = re.compile(r"(?<![A-Za-z])[A-Za-z]:[\\/][^\s\"']*")
 # least one ``segment/`` group, then a final segment.
 _POSIX_PATH = re.compile(r"(?<![A-Za-z0-9._/])/(?:[^\s/\"']+/)+[^\s/\"']+")
 # Hex/base64 run of 24+ chars, word-bounded against the same alphabet so
-# we don't bite off a fragment of a longer identifier.
-_TOKEN = re.compile(r"(?<![A-Za-z0-9+/=_-])[A-Za-z0-9+/=_-]{24,}(?![A-Za-z0-9+/=_-])")
+# we don't bite off a fragment of a longer identifier. A digit is required
+# inside the run so long symbolic identifiers — rule ids like
+# ``setup.object_count_consistency`` or Python names like
+# ``BasinSimulationPipelineConfig`` — pass through untouched; real API
+# keys, SHA hashes, and base64 tokens always contain digits.
+_TOKEN = re.compile(
+    r"(?<![A-Za-z0-9+/=_-])(?=[A-Za-z0-9+/=_-]*[0-9])[A-Za-z0-9+/=_-]{24,}(?![A-Za-z0-9+/=_-])"
+)
 
 
 def _path_to_basename(match: re.Match[str]) -> str:
