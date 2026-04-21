@@ -1,13 +1,13 @@
 # --- SWAT+ai personal/planning files (kept local, not committed) ---
-swatplus-ai_project.md
-swatplus-ai_architecture.md
-swatplus-ai_roadmap.md
-swatplus-ai_standards.md
-swatdocR.pdf
-example*.png
-memory/
-CLAUDE.md
-.claude/
+/swatplus-ai_project.md
+/swatplus-ai_architecture.md
+/swatplus-ai_roadmap.md
+/swatplus-ai_standards.md
+/swatdocR.pdf
+/example*.png
+/memory/
+/CLAUDE.md
+/.claude/
 
 # --- Python ---
 __pycache__/
@@ -77,3 +77,20 @@ handoff_*.md
 
 # --- Per-project telemetry / cache dirs (never committed) ---
 .swatplus-ai/
+
+# --- Retrieval corpus + index caches (fetched on demand, not committed) ---
+data/retrieval/
+
+# --- Dogfood workspace (local only — real user projects + run notes) ---
+dogfood/
+
+# --- LLM prompt templates + static passages (local only — not published) ---
+src/swatplus_ai/prompts/*.md
+src/swatplus_ai/prompts/static_passages/
+
+# --- WIP public-facing docs (rebuilt cleanly later, not during assembly) ---
+/CHANGELOG.md
+/README.md
+/UI_REFACTOR_PLAN.md
+/future_steps/
+/design-dl/
