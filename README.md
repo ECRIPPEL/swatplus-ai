@@ -20,6 +20,18 @@ Planned scope:
 
 Everything runs locally. Only the LLM call leaves your machine, and only when you ask for it.
 
+## What's already built
+
+Module 1 (setup check) is functional end-to-end. Concretely, the codebase currently ships:
+
+- **~60 input file parsers** covering control / inventory, HRU core, weather stations and series, management schedules + operation databases, spatial connectivity, routing bodies, HRU chemistry initial conditions, calibration parameter registry, and decision tables.
+- **13 annual-average output parsers** with column-drift tolerance across SWAT+ simulator revisions (headers reconciled by name, not by position).
+- **10 setup-stage diagnostic rules** covering object-count consistency, simulation period and warmup sanity, PET-vs-climate availability, land-use / HRU cross-checks, and `parameters.bsn` Editor-bug detection.
+- **3 LLM backends**: Anthropic, OpenAI, and a deterministic mock. Streaming on by default; secure API-key storage via the OS keyring.
+- **BM25 retrieval** over the official SWAT+ I/O documentation, with citation validation against the passages the model was shown.
+- **Goodness-of-fit metrics module** — NSE, KGE (2009 and 2012), PBIAS, R², P-factor, R-factor, plus Moriasi et al. (2015) performance classification for streamflow and sediment. Math layer ready; no consumer wired yet.
+- **Local session telemetry** (redacted JSONL logs) and an experimental FastAPI server for the React UI prototype.
+
 ## Quick start
 
 Requires Python 3.11+ and a SWAT+ project saved from Editor v3.0 or newer.
