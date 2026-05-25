@@ -36,6 +36,12 @@ class _BaseBackend:
     - :meth:`_auth_headers` — HTTP headers carrying credentials.
     - :meth:`_parse_response` — non-streaming response → :class:`LLMResponse`.
     - :meth:`_parse_sse_delta` — SSE frame → ``(text_delta_or_None, done)``.
+    - :meth:`_parse_sse_accounting` — SSE frame → optional dict with any
+      of ``input_tokens`` / ``output_tokens`` / ``finish_reason``.
+      Kept separate from ``_parse_sse_delta`` because the usage /
+      stop-reason payloads ride on *different* events than the text
+      deltas (Anthropic: ``message_start`` + ``message_delta``; OpenAI:
+      the trailing ``choices=[]`` + ``usage`` frame).
     """
 
     DEFAULT_MODEL: ClassVar[str] = ""
@@ -81,6 +87,17 @@ class _BaseBackend:
 
     def _parse_sse_delta(self, frame: dict[str, Any]) -> tuple[str | None, bool]:
         raise NotImplementedError
+
+    def _parse_sse_accounting(self, frame: dict[str, Any]) -> dict[str, Any] | None:
+        """Pull token counts / ``finish_reason`` out of one SSE frame.
+
+        Return ``None`` for frames that carry neither (every text-delta
+        frame in practice). Returned keys are merged into the running
+        accounting dict in :meth:`stream`, so a later frame overrides an
+        earlier value — Anthropic's ``message_delta`` supplies the
+        *final* ``output_tokens`` by doing exactly that.
+        """
+        return None
 
     # ---- public API ----------------------------------------------------------
     async def complete(
@@ -139,21 +156,61 @@ class _BaseBackend:
         max_tokens: int = 1024,
         temperature: float = 0.7,
     ) -> AsyncIterator[str]:
-        body = self._build_body(
-            messages, model or self.DEFAULT_MODEL, max_tokens, temperature, stream=True
+        resolved_model = model or self.DEFAULT_MODEL
+        body = self._build_body(messages, resolved_model, max_tokens, temperature, stream=True)
+        accounting: dict[str, Any] = {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "finish_reason": "stop",
+        }
+        t0 = perf_counter()
+        try:
+            async for frame in stream_sse(
+                self._client,
+                "POST",
+                self._endpoint(),
+                headers=self._auth_headers(),
+                json_body=body,
+            ):
+                delta, _done = self._parse_sse_delta(frame)
+                acct = self._parse_sse_accounting(frame)
+                if acct:
+                    accounting.update(acct)
+                if delta:
+                    yield delta
+                # Note: we intentionally do NOT return on ``_done``. The
+                # final text chunk carries ``finish_reason`` *before* the
+                # trailing usage frame on OpenAI, and Anthropic's usage
+                # lands on ``message_delta`` *after* ``message_stop`` in
+                # some rollouts — letting ``stream_sse`` drive termination
+                # via the server's close / ``[DONE]`` sentinel is the
+                # only way to observe both without racing the provider.
+        except Exception as exc:
+            # GeneratorExit is a BaseException, not Exception — a
+            # consumer's early break won't fire this branch, which is
+            # the right semantics (no metric for a caller-side abort).
+            telemetry.emit(
+                "llm_call",
+                provider=self.PROVIDER,
+                model=resolved_model,
+                input_tokens=accounting["input_tokens"],
+                output_tokens=accounting["output_tokens"],
+                finish_reason="error",
+                duration_ms=round((perf_counter() - t0) * 1000),
+                streaming=True,
+                exception=type(exc).__name__,
+            )
+            raise
+        telemetry.emit(
+            "llm_call",
+            provider=self.PROVIDER,
+            model=resolved_model,
+            input_tokens=accounting["input_tokens"],
+            output_tokens=accounting["output_tokens"],
+            finish_reason=accounting["finish_reason"],
+            duration_ms=round((perf_counter() - t0) * 1000),
+            streaming=True,
         )
-        async for frame in stream_sse(
-            self._client,
-            "POST",
-            self._endpoint(),
-            headers=self._auth_headers(),
-            json_body=body,
-        ):
-            delta, done = self._parse_sse_delta(frame)
-            if delta:
-                yield delta
-            if done:
-                return
 
 
 # ----- Anthropic ----------------------------------------------------------------
@@ -220,6 +277,30 @@ class _AnthropicProtocol(_BaseBackend):
         if event == "message_stop":
             return (None, True)
         return (None, False)
+
+    def _parse_sse_accounting(self, frame: dict[str, Any]) -> dict[str, Any] | None:
+        event = frame.get("event")
+        data = frame.get("data", {}) or {}
+        if event == "message_start":
+            message = data.get("message", {}) or {}
+            usage = message.get("usage", {}) or {}
+            result: dict[str, Any] = {}
+            if "input_tokens" in usage:
+                result["input_tokens"] = int(usage["input_tokens"])
+            if "output_tokens" in usage:
+                result["output_tokens"] = int(usage["output_tokens"])
+            return result or None
+        if event == "message_delta":
+            delta = data.get("delta", {}) or {}
+            usage = data.get("usage", {}) or {}
+            result = {}
+            stop = delta.get("stop_reason")
+            if stop:
+                result["finish_reason"] = _normalize_anthropic_stop(str(stop))
+            if "output_tokens" in usage:
+                result["output_tokens"] = int(usage["output_tokens"])
+            return result or None
+        return None
 
 
 def _normalize_anthropic_stop(reason: str) -> str:
@@ -311,6 +392,22 @@ class _OpenAIProtocol(_BaseBackend):
         finish = first.get("finish_reason")
         done = finish is not None and finish != ""
         return (str(text) if text else None, done)
+
+    def _parse_sse_accounting(self, frame: dict[str, Any]) -> dict[str, Any] | None:
+        data = frame.get("data", {}) or {}
+        result: dict[str, Any] = {}
+        usage = data.get("usage")
+        if isinstance(usage, dict):
+            if "prompt_tokens" in usage:
+                result["input_tokens"] = int(usage["prompt_tokens"])
+            if "completion_tokens" in usage:
+                result["output_tokens"] = int(usage["completion_tokens"])
+        choices = data.get("choices", []) or []
+        if choices and isinstance(choices[0], dict):
+            finish = choices[0].get("finish_reason")
+            if finish:
+                result["finish_reason"] = _normalize_openai_stop(str(finish))
+        return result or None
 
 
 def _normalize_openai_stop(reason: str) -> str:

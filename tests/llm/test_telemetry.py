@@ -1,11 +1,13 @@
-"""Slice-5-closure tests: every ``complete()`` emits ``llm_call``.
+"""Tests for ``llm_call`` emission across every backend entrypoint.
 
 The instrumentation lives in two files — ``api_key.py`` (Anthropic +
-OpenAI, shared via ``_BaseBackend``) and ``mock.py``. Tests cover
-the happy path, the error path (provider 401 / 429), the disabled
-state, and the streaming-stays-silent contract. ``stream()`` not
-emitting is a **documented limitation** of this slice, not an
-accident: see the commit body for why.
+OpenAI, shared via ``_BaseBackend``) and ``mock.py``. Happy path, error
+path (provider 401 / 429), and the disabled state are all covered for
+``complete()``. ``stream()`` — wired in slice 7.2 — has its own trio of
+tests that assert ``streaming=True``, that the *final* ``output_tokens``
+wins over any earlier provisional count (Anthropic ``message_delta``),
+and that a transport failure still fires ``llm_call`` with
+``finish_reason="error"``.
 """
 
 from __future__ import annotations
@@ -257,25 +259,81 @@ async def test_contract_identity_across_telemetry_toggle(
     assert baseline == instrumented
 
 
-async def test_stream_does_not_emit(enable_telemetry: None) -> None:
-    # stream() instrumentation is deferred (see commit message) —
-    # this guard documents the decision so re-enabling it becomes a
-    # conscious edit rather than a silent drift.
+async def test_stream_emits_llm_call_anthropic(enable_telemetry: None) -> None:
+    # Anthropic SSE: message_start carries input_tokens + initial output_tokens,
+    # content_block_delta carries the text, message_delta carries the *final*
+    # output_tokens + stop_reason, message_stop terminates. The accounting
+    # dict in ``stream()`` must merge all three metadata frames — the final
+    # output_tokens value we assert here comes from the message_delta, not
+    # the message_start.
+    def sse_handler(_request: httpx.Request) -> httpx.Response:
+        frames = [
+            ("message_start", {"message": {"usage": {"input_tokens": 5, "output_tokens": 1}}}),
+            ("content_block_start", {"index": 0}),
+            ("content_block_delta", {"delta": {"type": "text_delta", "text": "he"}}),
+            ("content_block_delta", {"delta": {"type": "text_delta", "text": "ll"}}),
+            ("content_block_delta", {"delta": {"type": "text_delta", "text": "o"}}),
+            ("content_block_stop", {"index": 0}),
+            (
+                "message_delta",
+                {"delta": {"stop_reason": "end_turn"}, "usage": {"output_tokens": 7}},
+            ),
+            ("message_stop", {}),
+        ]
+        body_parts: list[str] = []
+        for event, data in frames:
+            body_parts.append(f"event: {event}\ndata: {json.dumps(data)}\n\n")
+        return httpx.Response(
+            200,
+            content="".join(body_parts).encode("utf-8"),
+            headers={"content-type": "text/event-stream"},
+        )
+
+    sink = InMemorySink()
+    telemetry.configure(sink)
+    client = httpx.AsyncClient(transport=httpx.MockTransport(sse_handler))
+    try:
+        backend = AnthropicBackend(api_key="sk-test", client=client)
+        chunks = [chunk async for chunk in backend.stream(_MESSAGES, model=_SHORT_ANTHROPIC_MODEL)]
+    finally:
+        await client.aclose()
+
+    assert "".join(chunks) == "hello"
+    events = _only(sink.events, "llm_call")
+    assert len(events) == 1
+    fields = events[0].fields
+    assert fields["provider"] == "anthropic"
+    assert fields["model"] == _SHORT_ANTHROPIC_MODEL
+    assert fields["streaming"] is True
+    assert fields["input_tokens"] == 5
+    # message_delta's output_tokens must win over message_start's — final, not initial.
+    assert fields["output_tokens"] == 7
+    assert fields["finish_reason"] == "stop"
+    assert isinstance(fields["duration_ms"], int)
+    assert fields["duration_ms"] >= 0
+
+
+async def test_stream_emits_llm_call_openai(enable_telemetry: None) -> None:
+    # OpenAI SSE with stream_options.include_usage=true: content chunks carry
+    # delta.content, the penultimate chunk carries finish_reason, the *final*
+    # frame carries usage and an empty choices list, then [DONE].
     def sse_handler(_request: httpx.Request) -> httpx.Response:
         body = (
             "data: "
             + json.dumps(
-                {
-                    "choices": [{"index": 0, "delta": {"content": "hi"}, "finish_reason": None}],
-                }
+                {"choices": [{"index": 0, "delta": {"content": "hi "}, "finish_reason": None}]}
             )
             + "\n\n"
             "data: "
             + json.dumps(
-                {
-                    "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
-                }
+                {"choices": [{"index": 0, "delta": {"content": "there"}, "finish_reason": None}]}
             )
+            + "\n\n"
+            "data: "
+            + json.dumps({"choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]})
+            + "\n\n"
+            "data: "
+            + json.dumps({"choices": [], "usage": {"prompt_tokens": 9, "completion_tokens": 4}})
             + "\n\n"
             "data: [DONE]\n\n"
         )
@@ -290,14 +348,48 @@ async def test_stream_does_not_emit(enable_telemetry: None) -> None:
     client = httpx.AsyncClient(transport=httpx.MockTransport(sse_handler))
     try:
         backend = OpenAIBackend(api_key="sk-test", client=client)
-        # Drain the iterator fully so the stream is exercised end to end.
-        chunks = [chunk async for chunk in backend.stream(_MESSAGES)]
+        chunks = [chunk async for chunk in backend.stream(_MESSAGES, model=_SHORT_OPENAI_MODEL)]
     finally:
         await client.aclose()
 
-    assert "".join(chunks) == "hi"
-    # Contract: no llm_call until streaming accounting lands (deferred).
-    assert _only(sink.events, "llm_call") == []
+    assert "".join(chunks) == "hi there"
+    events = _only(sink.events, "llm_call")
+    assert len(events) == 1
+    fields = events[0].fields
+    assert fields["provider"] == "openai"
+    assert fields["model"] == _SHORT_OPENAI_MODEL
+    assert fields["streaming"] is True
+    assert fields["input_tokens"] == 9
+    assert fields["output_tokens"] == 4
+    assert fields["finish_reason"] == "stop"
+
+
+async def test_stream_emits_llm_call_on_error(enable_telemetry: None) -> None:
+    # Transport blows up mid-stream (pre-response). Instrumentation must
+    # still fire with finish_reason="error" and exception=<type name>,
+    # so observability doesn't have a silent hole on transport failure.
+    def sse_handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(401, json={"error": {"message": "invalid key"}})
+
+    sink = InMemorySink()
+    telemetry.configure(sink)
+    client = httpx.AsyncClient(transport=httpx.MockTransport(sse_handler))
+    try:
+        backend = OpenAIBackend(api_key="sk-bad", client=client)
+        with pytest.raises(AuthError):
+            async for _ in backend.stream(_MESSAGES, model=_SHORT_OPENAI_MODEL):
+                pass
+    finally:
+        await client.aclose()
+
+    events = _only(sink.events, "llm_call")
+    assert len(events) == 1
+    fields = events[0].fields
+    assert fields["provider"] == "openai"
+    assert fields["model"] == _SHORT_OPENAI_MODEL
+    assert fields["streaming"] is True
+    assert fields["finish_reason"] == "error"
+    assert fields["exception"] == "AuthError"
 
 
 async def test_mock_complete_reports_model_override(enable_telemetry: None) -> None:
