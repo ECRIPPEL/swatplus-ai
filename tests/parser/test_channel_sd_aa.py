@@ -30,19 +30,22 @@ def test_parse_uru(uru_project: Path) -> None:
     assert df["flo_out"].notna().all()
 
 
-def test_too_few_tokens_raises(tmp_path: Path) -> None:
-    # Build a file with a correct header but a short data row.
+def test_row_wider_than_declared_plus_trailing_raises(tmp_path: Path) -> None:
+    # After the trailing-scenario stripper, a non-merge file should still
+    # reject rows that remain wider than the declared schema — i.e. rows
+    # with more than ``declared + expected_trailing_count`` tokens. Use
+    # ``+ 4`` so that one surplus token remains after the 3-token strip.
     from swatplus_ai.parser.outputs.channel_sd_aa import _COLUMNS
 
     p = tmp_path / "channel_sd_aa.txt"
-    short_row = " ".join(["0"] * (len(_COLUMNS) + 2))  # too many, no merge col
+    wide_row = " ".join(["0"] * (len(_COLUMNS) + 4))
     content = (
         "title line\n"
         + " ".join(_COLUMNS)
         + "\n"
         + " ".join(["-"] * len(_COLUMNS))
         + "\n"
-        + short_row
+        + wide_row
         + "\n"
     )
     p.write_text(content)

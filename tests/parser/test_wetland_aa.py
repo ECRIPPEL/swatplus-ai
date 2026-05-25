@@ -29,5 +29,5 @@ def test_parse_uru(uru_project: Path) -> None:
 def test_wrong_header_raises(tmp_path: Path) -> None:
     p = tmp_path / "wetland_aa.txt"
     p.write_text("title\njday mon day WRONG\nm3 m3 m3 m3\n1 2 3 4\n")
-    with pytest.raises(OutputParseError, match="expected header"):
+    with pytest.raises(OutputParseError, match="missing required core"):
         parse_wetland_aa(p)

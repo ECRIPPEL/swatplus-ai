@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from pydantic import ValidationError
 
 from swatplus_ai.parser._base import ParseError
 from swatplus_ai.parser.inputs.time_sim import TimeSim, parse_time_sim
@@ -32,12 +31,12 @@ def test_parse_uru(uru_project: Path) -> None:
     assert t.step == 0
 
 
-def test_wrong_header_raises(tmp_path: Path) -> None:
+def test_missing_required_column_raises(tmp_path: Path) -> None:
     p = tmp_path / "time.sim"
     p.write_text(
         "time.sim: synthetic\nday_start yrc_start day_end yrc_end nope\n1 2000 365 2001 0\n"
     )
-    with pytest.raises(ParseError, match="expected header"):
+    with pytest.raises(ParseError, match="missing expected column"):
         parse_time_sim(p)
 
 
@@ -50,10 +49,29 @@ def test_non_integer_value_raises(tmp_path: Path) -> None:
         parse_time_sim(p)
 
 
-def test_day_out_of_range_raises(tmp_path: Path) -> None:
+def test_day_start_zero_accepted(tmp_path: Path) -> None:
+    """SWAT+ editor v3.0+ (rev.61+) writes ``day_start=0`` / ``day_end=0``
+    to mean 'simulate the full year'; the parser must accept the
+    convention."""
+    p = tmp_path / "time.sim"
+    p.write_text("time.sim: synthetic\nday_start yrc_start day_end yrc_end step\n0 1976 0 1989 0\n")
+    t = parse_time_sim(p)
+    assert t.day_start == 0
+    assert t.day_end == 0
+    assert t.yrc_start == 1976
+    assert t.yrc_end == 1989
+
+
+def test_day_out_of_range_raises_parse_error(tmp_path: Path) -> None:
+    """Negative days must still fail, and the error has to name the
+    file + line so the user isn't stuck with a bare
+    ``2 validation errors for TimeSim``."""
     p = tmp_path / "time.sim"
     p.write_text(
-        "time.sim: synthetic\nday_start yrc_start day_end yrc_end step\n0 2000 365 2001 0\n"
+        "time.sim: synthetic\nday_start yrc_start day_end yrc_end step\n-1 2000 365 2001 0\n"
     )
-    with pytest.raises(ValidationError):
+    with pytest.raises(ParseError) as exc_info:
         parse_time_sim(p)
+    assert exc_info.value.path == p
+    assert exc_info.value.line_no == 3
+    assert "day_start" in str(exc_info.value)

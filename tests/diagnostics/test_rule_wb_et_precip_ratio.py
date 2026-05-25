@@ -71,3 +71,32 @@ def test_wb_et_precip_ratio_skipped_when_outputs_unset(
     outputs = OutputsNamespace(folder=clean_setup_project.folder, basin_wb_aa=None)
     project = clean_setup_project.model_copy(update={"outputs": outputs})
     assert _findings(project) == []
+
+
+def test_wb_et_precip_ratio_info_finding_when_columns_missing(
+    clean_setup_project: TxtInOutProject,
+) -> None:
+    # Variable-suffix output: basin_wb_aa.txt parsed but the run didn't emit
+    # 'et' (plant-growth off, say). The rule should emit one info-severity
+    # finding explaining why it went quiet, not crash on a KeyError.
+    df = pd.DataFrame([{"precip": 1000.0, "name": "basin"}])
+    outputs = OutputsNamespace(folder=clean_setup_project.folder, basin_wb_aa=df)
+    project = clean_setup_project.model_copy(update={"outputs": outputs})
+    findings = _findings(project)
+    assert len(findings) == 1
+    f = findings[0]
+    assert f.severity == "info"
+    assert f.location == "basin_wb_aa.txt"
+    assert f.evidence["missing_columns"] == ("et",)
+    assert "not present in this run" in f.message
+
+
+def test_wb_et_precip_ratio_fires_normally_when_columns_present(
+    clean_setup_project: TxtInOutProject,
+) -> None:
+    # Sanity baseline — with both required columns present and ratio out of
+    # range, we still get the normal warning path (no regression).
+    project = _project_with_wb(clean_setup_project, precip=1000.0, et=200.0, name="b")
+    findings = _findings(project)
+    assert len(findings) == 1
+    assert findings[0].severity == "warning"

@@ -19,8 +19,9 @@ from swatplus_ai.parser._base import (
     Line,
     LineReader,
     ParseError,
-    expect_tokens,
+    expect_header_permissive,
     parse_float,
+    record_unknown_columns,
 )
 from swatplus_ai.parser.models import ParsedFile
 
@@ -39,7 +40,7 @@ _HEADER: tuple[str, ...] = (
     *_FLOAT_FIELDS,
     "description",
 )
-_MIN_TOKENS = 3 + len(_FLOAT_FIELDS)
+_FILE = "chem_app.ops"
 
 
 class ChemAppOpsRow(BaseModel):
@@ -75,30 +76,39 @@ def parse_chem_app_ops(path: Path) -> ChemAppOps:
     """Parse a ``chem_app.ops`` file into a :class:`ChemAppOps` model."""
     reader = LineReader(path)
     title = reader.next().text
-    expect_tokens(reader.next(), _HEADER, path=path)
+    header_line = reader.next()
+    idx_map, unknowns = expect_header_permissive(header_line, _HEADER, path=path)
 
     rows: list[ChemAppOpsRow] = []
+    first_row: Line | None = None
     while not reader.eof():
-        rows.append(_parse_row(reader.next(), path=path))
+        line = reader.next()
+        if first_row is None:
+            first_row = line
+        rows.append(_parse_row(line, idx_map=idx_map, path=path))
+
+    record_unknown_columns(unknowns, first_row, file=_FILE)
     return ChemAppOps(source_path=path, title=title, rows=tuple(rows))
 
 
-def _parse_row(line: Line, *, path: Path) -> ChemAppOpsRow:
-    if len(line.tokens) < _MIN_TOKENS:
+def _parse_row(line: Line, *, idx_map: dict[str, int], path: Path) -> ChemAppOpsRow:
+    desc_start = idx_map["description"]
+    if len(line.tokens) < desc_start:
         raise ParseError(
             path,
             line.line_no,
-            f"expected at least {_MIN_TOKENS} tokens "
-            f"(name + chem_form + app_typ + {len(_FLOAT_FIELDS)} floats), "
-            f"got {len(line.tokens)}",
+            f"expected at least {desc_start} tokens before 'description', got {len(line.tokens)}",
         )
-    name, chem_form, app_typ, *rest = line.tokens
-    float_toks = rest[: len(_FLOAT_FIELDS)]
-    desc_toks = rest[len(_FLOAT_FIELDS) :]
+    tokens = line.tokens
+    ln = line.line_no
+    name = tokens[idx_map["name"]]
+    chem_form = tokens[idx_map["chem_form"]]
+    app_typ = tokens[idx_map["app_typ"]]
     values = {
-        field: parse_float(tok, path=path, line_no=line.line_no, field=field)
-        for field, tok in zip(_FLOAT_FIELDS, float_toks, strict=True)
+        field: parse_float(tokens[idx_map[field]], path=path, line_no=ln, field=field)
+        for field in _FLOAT_FIELDS
     }
+    desc_toks = tokens[desc_start:]
     description = " ".join(desc_toks) if desc_toks else None
     return ChemAppOpsRow(
         name=name,

@@ -43,14 +43,14 @@ def test_parse_uru(uru_project: Path) -> None:
         assert 0.0 <= row.min_p <= 1.0
 
 
-def test_wrong_header_raises(tmp_path: Path) -> None:
+def test_missing_required_column_raises(tmp_path: Path) -> None:
     p = tmp_path / "fertilizer.frt"
     p.write_text(
         "fertilizer.frt: synthetic\n"
         "name min_n min_p org_n org_p nh3_n NOPE description\n"
         "urea 0.46 0 0 0 1.0 null Urea\n"
     )
-    with pytest.raises(ParseError, match="expected header"):
+    with pytest.raises(ParseError, match="missing expected column"):
         parse_fertilizer_frt(p)
 
 

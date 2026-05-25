@@ -28,9 +28,10 @@ from swatplus_ai.parser._base import (
     Line,
     LineReader,
     ParseError,
-    expect_tokens,
+    expect_header_permissive,
     parse_float,
     parse_nullable_str,
+    record_unknown_columns,
 )
 from swatplus_ai.parser.models import ParsedFile
 
@@ -43,8 +44,7 @@ _FLOAT_FIELDS: tuple[str, ...] = (
 )
 
 _HEADER: tuple[str, ...] = ("name", *_FLOAT_FIELDS, "pathogens", "description")
-# name + 5 floats + pathogens; description tokens (if any) trail.
-_MIN_TOKENS = 1 + len(_FLOAT_FIELDS) + 1
+_FILE = "fertilizer.frt"
 
 
 class FertilizerFrtRow(BaseModel):
@@ -79,33 +79,38 @@ def parse_fertilizer_frt(path: Path) -> FertilizerFrt:
     """Parse a ``fertilizer.frt`` file into a :class:`FertilizerFrt` model."""
     reader = LineReader(path)
     title = reader.next().text
-    expect_tokens(reader.next(), _HEADER, path=path)
+    header_line = reader.next()
+    idx_map, unknowns = expect_header_permissive(header_line, _HEADER, path=path)
 
     rows: list[FertilizerFrtRow] = []
+    first_row: Line | None = None
     while not reader.eof():
-        rows.append(_parse_row(reader.next(), path=path))
+        line = reader.next()
+        if first_row is None:
+            first_row = line
+        rows.append(_parse_row(line, idx_map=idx_map, path=path))
 
+    record_unknown_columns(unknowns, first_row, file=_FILE)
     return FertilizerFrt(source_path=path, title=title, rows=tuple(rows))
 
 
-def _parse_row(line: Line, *, path: Path) -> FertilizerFrtRow:
-    if len(line.tokens) < _MIN_TOKENS:
+def _parse_row(line: Line, *, idx_map: dict[str, int], path: Path) -> FertilizerFrtRow:
+    desc_start = idx_map["description"]
+    if len(line.tokens) < desc_start:
         raise ParseError(
             path,
             line.line_no,
-            f"expected at least {_MIN_TOKENS} tokens "
-            f"(name + {len(_FLOAT_FIELDS)} floats + pathogens), "
-            f"got {len(line.tokens)}",
+            f"expected at least {desc_start} tokens before 'description', got {len(line.tokens)}",
         )
-    name, *rest = line.tokens
-    float_toks = rest[: len(_FLOAT_FIELDS)]
-    pathogens_tok = rest[len(_FLOAT_FIELDS)]
-    desc_toks = rest[len(_FLOAT_FIELDS) + 1 :]
-
+    tokens = line.tokens
+    ln = line.line_no
+    name = tokens[idx_map["name"]]
+    pathogens_tok = tokens[idx_map["pathogens"]]
     values = {
-        field: parse_float(tok, path=path, line_no=line.line_no, field=field)
-        for field, tok in zip(_FLOAT_FIELDS, float_toks, strict=True)
+        field: parse_float(tokens[idx_map[field]], path=path, line_no=ln, field=field)
+        for field in _FLOAT_FIELDS
     }
+    desc_toks = tokens[desc_start:]
     description = " ".join(desc_toks) if desc_toks else None
     return FertilizerFrtRow(
         name=name,

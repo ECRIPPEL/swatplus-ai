@@ -17,7 +17,9 @@ def test_parse_minimal(minimal_project: Path) -> None:
     assert len(df) == 1
     assert len(df.columns) == 28
     assert df.iloc[0]["fertn"] == pytest.approx(20.0)
-    assert df.iloc[0]["plant_cov"] == "Original Simulation"
+    # Basin scope: plant_cov / mgt_ops declared in header but not in row;
+    # stripper peels the trailing scenario block so these come through NaN.
+    assert df.iloc[0]["plant_cov"] is None
 
 
 def test_parse_uru(uru_project: Path) -> None:
@@ -26,8 +28,8 @@ def test_parse_uru(uru_project: Path) -> None:
     assert df["nuptake"].iloc[0] >= 0
 
 
-def test_wrong_header_raises(tmp_path: Path) -> None:
+def test_broken_core_prefix_raises(tmp_path: Path) -> None:
     p = tmp_path / "basin_nb_aa.txt"
     p.write_text("title\njday mon day WRONG\nkg kg kg kg\n1 2 3 4\n")
-    with pytest.raises(OutputParseError, match="expected header"):
+    with pytest.raises(OutputParseError, match="missing required core"):
         parse_basin_nb_aa(p)

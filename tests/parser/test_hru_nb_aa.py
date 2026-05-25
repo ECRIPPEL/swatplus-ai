@@ -24,8 +24,8 @@ def test_parse_uru(uru_project: Path) -> None:
     assert df["denit"].notna().all()
 
 
-def test_wrong_header_raises(tmp_path: Path) -> None:
+def test_broken_core_prefix_raises(tmp_path: Path) -> None:
     p = tmp_path / "hru_nb_aa.txt"
     p.write_text("title\njday mon day WRONG\nkg kg kg kg\n1 2 3 4\n")
-    with pytest.raises(OutputParseError, match="expected header"):
+    with pytest.raises(OutputParseError, match="missing required core"):
         parse_hru_nb_aa(p)

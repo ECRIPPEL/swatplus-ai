@@ -35,6 +35,25 @@ def wb_et_precip_ratio(project: TxtInOutProject) -> list[CheckResult]:
     """
     df = project.outputs.basin_wb_aa
     assert df is not None  # rule.requires gates on outputs.basin_wb_aa
+    missing = [c for c in ("precip", "et") if c not in df.columns]
+    if missing:
+        # Variable-suffix output files legitimately omit columns when the
+        # corresponding SWAT+ module is off. Surface this once at info
+        # severity so the user knows *why* the rule went quiet, rather
+        # than silently returning nothing.
+        return [
+            CheckResult(
+                location="basin_wb_aa.txt",
+                severity="info",
+                evidence={
+                    "reason": (
+                        "rule requires 'precip' and 'et' in basin_wb_aa.txt; "
+                        f"column(s) {missing!r} not present in this run — skipping"
+                    ),
+                    "missing_columns": tuple(missing),
+                },
+            )
+        ]
     results: list[CheckResult] = []
     for _, row in df.iterrows():
         precip = float(row["precip"])

@@ -17,7 +17,11 @@ def test_parse_minimal(minimal_project: Path) -> None:
     assert len(df) == 1
     assert len(df.columns) == 22
     assert df.iloc[0]["sedyld"] == pytest.approx(1.25)
-    assert df.iloc[0]["plant_cov"] == "Original Simulation"
+    # Fixture emits the canonical Fortran 3-trailing scenario block.
+    # Post-strip, plant_cov / mgt_ops / percn carry their declared values.
+    assert df.iloc[0]["plant_cov"] == "agrl"
+    assert df.iloc[0]["mgt_ops"] == "default"
+    assert df.iloc[0]["percn"] == pytest.approx(0.0)
 
 
 def test_parse_uru(uru_project: Path) -> None:
@@ -26,8 +30,8 @@ def test_parse_uru(uru_project: Path) -> None:
     assert df["sedyld"].iloc[0] >= 0
 
 
-def test_wrong_header_raises(tmp_path: Path) -> None:
+def test_broken_core_prefix_raises(tmp_path: Path) -> None:
     p = tmp_path / "basin_ls_aa.txt"
     p.write_text("title\njday mon day WRONG\nmm mm mm mm\n1 2 3 4\n")
-    with pytest.raises(OutputParseError, match="expected header"):
+    with pytest.raises(OutputParseError, match="missing required core"):
         parse_basin_ls_aa(p)

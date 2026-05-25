@@ -1,0 +1,13 @@
+id: setup.bsn.day_lag_max_as_float
+severity: warning
+stage: [setup]
+requires: [parameters_bsn]
+check: setup_bsn_day_lag_max_as_float
+message: >-
+  parameters.bsn column 'day_lag_max' was written as '{observed}' (float) but
+  the Fortran canonical type is integer. SWAT+ Editor < v3.1.0 has this bug;
+  upgrade to Editor v{fixed_in_version}+ and regenerate parameters.bsn to fix
+  at the source. swatplus-ai tolerated the value for this parse.
+references:
+  - https://github.com/swat-model/swatplus-editor/blob/main/CHANGELOG.md
+  - https://github.com/swat-model/swatplus/blob/main/src/basin_module.f90

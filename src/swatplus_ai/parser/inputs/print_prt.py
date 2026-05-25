@@ -17,6 +17,7 @@ from swatplus_ai.parser._base import (
     LineReader,
     ParseError,
     expect_tokens,
+    expect_tokens_any,
     parse_int_row,
     parse_yn,
     parse_yn_row,
@@ -27,6 +28,18 @@ _PERIOD_HEADER = ("nyskip", "day_start", "yrc_start", "day_end", "yrc_end", "int
 _AA_HEADER = ("aa_int_cnt",)
 _CSVOUT_HEADER = ("csvout", "dbout", "cdfout")
 _SOILOUT_HEADER = ("soilout", "mgtout", "hydcon", "fdcout")
+# SWAT+ Editor v3.0+ (rev.61.0.1 / rev.61.0.2) writes ``crop_yld`` in column 1
+# where SWAT+ Toolbox writes ``soilout``. Same section, different writer.
+# Canonical field name stays ``soilout`` — we only widen the header check.
+_SOILOUT_HEADER_ALIASES: tuple[tuple[str, ...], ...] = (
+    _SOILOUT_HEADER,
+    ("crop_yld", "mgtout", "hydcon", "fdcout"),
+)
+# Fortran ``basin_module.f90`` declares column 1 as a single character with
+# valid values ``a|y|b|n`` (a=average annual, y=yearly, b=both, n=none). The
+# Toolbox docs' y/n-only claim was wrong — confirmed via source, so all four
+# are accepted here. Anything truthy (a/y/b) flips the boolean.
+_CROP_YLD_VALID = frozenset({"a", "y", "b", "n"})
 _OBJECTS_HEADER = ("objects", "daily", "monthly", "yearly", "avann")
 
 
@@ -80,8 +93,8 @@ def parse_print_prt(path: Path) -> PrintPrt:
     expect_tokens(reader.next(), _CSVOUT_HEADER, path=path)
     csv_flags = parse_yn_row(reader.next(), _CSVOUT_HEADER, path=path)
 
-    expect_tokens(reader.next(), _SOILOUT_HEADER, path=path)
-    soil_flags = parse_yn_row(reader.next(), _SOILOUT_HEADER, path=path)
+    expect_tokens_any(reader.next(), _SOILOUT_HEADER_ALIASES, path=path)
+    soil_flags = _parse_soilout_row(reader.next(), path=path)
 
     expect_tokens(reader.next(), _OBJECTS_HEADER, path=path)
 
@@ -98,6 +111,33 @@ def parse_print_prt(path: Path) -> PrintPrt:
         **soil_flags,
         objects=tuple(objects),
     )
+
+
+def _parse_soilout_row(line: Line, *, path: Path) -> dict[str, bool]:
+    """Parse the soilout/crop_yld value row.
+
+    Fortran canonical (``basin_module.f90``) accepts ``a|y|b|n`` in column 1
+    (average annual / yearly / both / none). Anything truthy maps to ``True``;
+    ``n`` is the only falsey value. The other three columns are strict y/n —
+    anything else there still raises.
+    """
+    if len(line.tokens) != len(_SOILOUT_HEADER):
+        raise ParseError(
+            path,
+            line.line_no,
+            f"expected {len(_SOILOUT_HEADER)} values, got {len(line.tokens)}",
+        )
+    raw = line.tokens[0].strip().lower()
+    if raw not in _CROP_YLD_VALID:
+        raise ParseError(
+            path,
+            line.line_no,
+            f"expected one of 'a', 'y', 'b', 'n' for 'soilout', got {line.tokens[0]!r}",
+        )
+    flags: dict[str, bool] = {"soilout": raw != "n"}
+    for name, tok in zip(_SOILOUT_HEADER[1:], line.tokens[1:], strict=True):
+        flags[name] = parse_yn(tok, path=path, line_no=line.line_no, field=name)
+    return flags
 
 
 def _parse_object_row(line: Line, *, path: Path) -> ObjectPrintFlags:

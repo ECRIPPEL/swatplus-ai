@@ -20,6 +20,7 @@ from swatplus_ai.parser.txtinout import TxtInOutProject
 _EXPECTED_RULE_IDS = {
     "chan.routing_topology",
     "hru.fk_consistency",
+    "setup.bsn.day_lag_max_as_float",
     "setup.files_present",
     "setup.mgt_date_order",
     "setup.object_count_consistency",
@@ -31,7 +32,7 @@ _EXPECTED_RULE_IDS = {
 }
 
 
-def test_from_builtin_rules_loads_all_ten() -> None:
+def test_from_builtin_rules_loads_expected_set() -> None:
     engine = DiagnosticEngine.from_builtin_rules()
     ids = {rule.id for rule in engine.rules}
     assert ids == _EXPECTED_RULE_IDS

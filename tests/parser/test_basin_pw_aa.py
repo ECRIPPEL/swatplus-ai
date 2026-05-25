@@ -17,7 +17,9 @@ def test_parse_minimal(minimal_project: Path) -> None:
     assert len(df) == 1
     assert len(df.columns) == 34
     assert df.iloc[0]["lai"] == pytest.approx(2.5)
-    assert df.iloc[0]["plant_cov"] == "Original Simulation"
+    # Basin scope: stripper peels the scenario block so plant_cov
+    # (declared but not emitted by the writer) comes through NaN.
+    assert df.iloc[0]["plant_cov"] is None
 
 
 def test_parse_uru(uru_project: Path) -> None:

@@ -121,14 +121,17 @@ def test_from_directory_missing_dir_raises(clean_registry: None, tmp_path: Path)
 
 def test_from_builtin_rules_loads_module_1_set(clean_registry: None) -> None:
     engine = DiagnosticEngine.from_builtin_rules()
-    # Slices 4.2 + 4.3 together ship the ten Module-1 rules. Assert the
-    # exact set so accidental additions or deletions fail this test
-    # loudly. The per-rule detail lives in dedicated test files; this
-    # assertion only pins the id set.
+    # Slices 4.2 + 4.3 shipped the initial ten Module-1 rules; slice 7.3g
+    # retired the false-premise ``setup.print.crop_yld_nonstandard_value``
+    # (Fortran source explicitly documents ``a|y|b|n``) and added
+    # ``setup.bsn.day_lag_max_as_float`` (Editor < v3.1.0 tool-bug drift).
+    # Assert the exact set so accidental additions or deletions fail this
+    # test loudly; per-rule detail lives in dedicated test files.
     ids = {rule.id for rule in engine.rules}
     assert ids == {
         "chan.routing_topology",
         "hru.fk_consistency",
+        "setup.bsn.day_lag_max_as_float",
         "setup.files_present",
         "setup.mgt_date_order",
         "setup.object_count_consistency",

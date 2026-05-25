@@ -22,14 +22,14 @@ def test_parse_minimal(minimal_project: Path) -> None:
     assert t.rows[1].description is None
 
 
-def test_wrong_header_raises(tmp_path: Path) -> None:
+def test_missing_required_column_raises(tmp_path: Path) -> None:
     p = tmp_path / "tillage.til"
     p.write_text(
         "tillage.til: synthetic\n"
         "name mix_eff mix_dp rough ridge_ht NOPE description\n"
         "fallplow 0.95 150 75 0 0 desc\n"
     )
-    with pytest.raises(ParseError, match="expected header"):
+    with pytest.raises(ParseError, match="missing expected column"):
         parse_tillage_til(p)
 
 

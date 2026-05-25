@@ -17,14 +17,15 @@ from swatplus_ai.parser._base import (
     Line,
     LineReader,
     ParseError,
-    expect_tokens,
+    expect_header_permissive,
     parse_float,
+    record_unknown_columns,
 )
 from swatplus_ai.parser.models import ParsedFile
 
 _FLOAT_FIELDS: tuple[str, ...] = ("swp_eff", "frac_curb")
 _HEADER: tuple[str, ...] = ("name", *_FLOAT_FIELDS, "description")
-_MIN_TOKENS = 1 + len(_FLOAT_FIELDS)
+_FILE = "sweep.ops"
 
 
 class SweepOpsRow(BaseModel):
@@ -54,28 +55,36 @@ def parse_sweep_ops(path: Path) -> SweepOps:
     """Parse a ``sweep.ops`` file into a :class:`SweepOps` model."""
     reader = LineReader(path)
     title = reader.next().text
-    expect_tokens(reader.next(), _HEADER, path=path)
+    header_line = reader.next()
+    idx_map, unknowns = expect_header_permissive(header_line, _HEADER, path=path)
 
     rows: list[SweepOpsRow] = []
+    first_row: Line | None = None
     while not reader.eof():
-        rows.append(_parse_row(reader.next(), path=path))
+        line = reader.next()
+        if first_row is None:
+            first_row = line
+        rows.append(_parse_row(line, idx_map=idx_map, path=path))
+
+    record_unknown_columns(unknowns, first_row, file=_FILE)
     return SweepOps(source_path=path, title=title, rows=tuple(rows))
 
 
-def _parse_row(line: Line, *, path: Path) -> SweepOpsRow:
-    if len(line.tokens) < _MIN_TOKENS:
+def _parse_row(line: Line, *, idx_map: dict[str, int], path: Path) -> SweepOpsRow:
+    desc_start = idx_map["description"]
+    if len(line.tokens) < desc_start:
         raise ParseError(
             path,
             line.line_no,
-            f"expected at least {_MIN_TOKENS} tokens "
-            f"(name + {len(_FLOAT_FIELDS)} floats), got {len(line.tokens)}",
+            f"expected at least {desc_start} tokens before 'description', got {len(line.tokens)}",
         )
-    name, *rest = line.tokens
-    float_toks = rest[: len(_FLOAT_FIELDS)]
-    desc_toks = rest[len(_FLOAT_FIELDS) :]
+    tokens = line.tokens
+    ln = line.line_no
+    name = tokens[idx_map["name"]]
     values = {
-        field: parse_float(tok, path=path, line_no=line.line_no, field=field)
-        for field, tok in zip(_FLOAT_FIELDS, float_toks, strict=True)
+        field: parse_float(tokens[idx_map[field]], path=path, line_no=ln, field=field)
+        for field in _FLOAT_FIELDS
     }
+    desc_toks = tokens[desc_start:]
     description = " ".join(desc_toks) if desc_toks else None
     return SweepOpsRow(name=name, description=description, **values)

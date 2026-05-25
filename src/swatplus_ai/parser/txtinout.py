@@ -43,6 +43,7 @@ from typing import Any, TypeVar
 from pydantic import BaseModel, ConfigDict
 
 from swatplus_ai import telemetry
+from swatplus_ai.diagnostics.drift import DriftRecord, DriftRegistry
 from swatplus_ai.parser._base import ParseError
 from swatplus_ai.parser.inputs.aqu_catunit_ele import AquCatunitEle, parse_aqu_catunit_ele
 from swatplus_ai.parser.inputs.aquifer_aqu import AquiferAqu, parse_aquifer_aqu
@@ -56,7 +57,7 @@ from swatplus_ai.parser.inputs.codes_bsn import CodesBsn, parse_codes_bsn
 from swatplus_ai.parser.inputs.codes_sft import CodesSft, parse_codes_sft
 from swatplus_ai.parser.inputs.cons_practice_lum import ConsPracticeLum, parse_cons_practice_lum
 from swatplus_ai.parser.inputs.fertilizer_frt import FertilizerFrt, parse_fertilizer_frt
-from swatplus_ai.parser.inputs.file_cio import FileCio, parse_file_cio
+from swatplus_ai.parser.inputs.file_cio import FileCio, check_swatplus_version, parse_file_cio
 from swatplus_ai.parser.inputs.fire_ops import FireOps, parse_fire_ops
 from swatplus_ai.parser.inputs.graze_ops import GrazeOps, parse_graze_ops
 from swatplus_ai.parser.inputs.harv_ops import HarvOps, parse_harv_ops
@@ -266,6 +267,14 @@ class TxtInOutProject(BaseModel):
     # will have ``outputs`` present but all fields ``None``.
     outputs: OutputsNamespace
 
+    # Tool-bug / spec-divergence observations captured while parsing this
+    # project (see :mod:`swatplus_ai.diagnostics.drift`). Empty tuple for a
+    # pristine project; the setup rule engine consumes this to emit
+    # actionable findings (e.g. ``day_lag_max`` written as float by Editor
+    # < v3.1.0). ``spec_compliant`` drifts are absorbed silently and do
+    # not land here.
+    drifts: tuple[DriftRecord, ...] = ()
+
     @property
     def topology(self) -> TopologyAccessor:
         """Graph-level queries derived from parsed ``*.con`` tables."""
@@ -278,11 +287,32 @@ class TxtInOutProject(BaseModel):
         if not folder.is_dir():
             raise NotADirectoryError(f"TxtInOut folder not found: {folder}")
 
+        # Parse ``file.cio`` first so we can fail fast on unsupported SWAT+
+        # versions — rev.60.x projects would otherwise crash later in
+        # ``object.cnt`` / ``codes.bsn`` / ``hydrology.hyd`` with header
+        # drift errors that don't tell the user to upgrade.
+        file_cio = _timed("file.cio", parse_file_cio, folder / "file.cio")
+        check_swatplus_version(file_cio)
+
+        # Any ``record_drift()`` call inside a parser lands in this registry.
+        # Keeping the scope project-wide (not per-file) means rule checks can
+        # aggregate drift across files without threading the registry through
+        # each parser's signature.
+        with DriftRegistry() as drift_reg:
+            return cls._read_inner(folder, file_cio, drift_reg)
+
+    @classmethod
+    def _read_inner(
+        cls,
+        folder: Path,
+        file_cio: FileCio,
+        drift_reg: DriftRegistry,
+    ) -> TxtInOutProject:
         return cls(
             folder=folder,
             time_sim=_timed("time.sim", parse_time_sim, folder / "time.sim"),
             print_prt=_timed("print.prt", parse_print_prt, folder / "print.prt"),
-            file_cio=_timed("file.cio", parse_file_cio, folder / "file.cio"),
+            file_cio=file_cio,
             object_cnt=_timed_optional(folder, "object.cnt", parse_object_cnt),
             codes_bsn=_timed("codes.bsn", parse_codes_bsn, folder / "codes.bsn"),
             parameters_bsn=_timed(
@@ -358,6 +388,7 @@ class TxtInOutProject(BaseModel):
             hmd_cli=_timed_optional(folder, "hmd.cli", parse_weather_cli),
             wnd_cli=_timed_optional(folder, "wnd.cli", parse_weather_cli),
             outputs=OutputsNamespace.read(folder),
+            drifts=drift_reg.all(),
         )
 
 

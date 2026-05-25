@@ -76,14 +76,14 @@ def test_parse_chem_app_ops(minimal_project: Path) -> None:
     assert bc.description == "broadcast_method"
 
 
-def test_harv_ops_wrong_header_raises(tmp_path: Path) -> None:
+def test_harv_ops_missing_required_column_raises(tmp_path: Path) -> None:
     p = tmp_path / "harv.ops"
     p.write_text(
         "harv.ops: synthetic\n"
         "name NOPE harv_idx harv_eff harv_bm_min description\n"
         "forest_cut tree 0.95 0.99 0.0\n"
     )
-    with pytest.raises(ParseError, match="expected header"):
+    with pytest.raises(ParseError, match="missing expected column"):
         parse_harv_ops(p)
 
 

@@ -19,6 +19,13 @@ from __future__ import annotations
 # ``DiagnosticEngine.from_builtin_rules()`` finds its check functions
 # without callers having to remember to import them.
 from swatplus_ai.diagnostics import checks as _checks  # noqa: F401
+from swatplus_ai.diagnostics.drift import (
+    DriftCategory,
+    DriftRecord,
+    DriftRegistry,
+    current_registry,
+    record_drift,
+)
 from swatplus_ai.diagnostics.engine import DiagnosticEngine
 from swatplus_ai.diagnostics.finding import Finding
 from swatplus_ai.diagnostics.registry import CheckResult, register_check
@@ -27,7 +34,12 @@ from swatplus_ai.diagnostics.rule import Rule
 __all__ = [
     "CheckResult",
     "DiagnosticEngine",
+    "DriftCategory",
+    "DriftRecord",
+    "DriftRegistry",
     "Finding",
     "Rule",
+    "current_registry",
+    "record_drift",
     "register_check",
 ]

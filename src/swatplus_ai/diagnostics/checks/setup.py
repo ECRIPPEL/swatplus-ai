@@ -114,6 +114,30 @@ def setup_sim_period_sanity(project: TxtInOutProject) -> list[CheckResult]:
     return results
 
 
+@register_check("setup_bsn_day_lag_max_as_float")
+def setup_bsn_day_lag_max_as_float(
+    project: TxtInOutProject,
+) -> CheckResult | None:
+    """Warn when ``parameters.bsn`` ``day_lag_max`` was serialized as a float.
+
+    The canonical Fortran type is integer, but SWAT+ Editor < v3.1.0 writes
+    it as ``0.00000``. Fortran list-directed I/O silently tolerates this, so
+    the bug is only observable at parse time on our side — surfaced here as
+    an actionable upgrade hint. Observed via
+    :mod:`~swatplus_ai.diagnostics.drift` during parsing.
+    """
+    for drift in project.drifts:
+        if drift.file == "parameters.bsn" and drift.column == "day_lag_max":
+            return CheckResult(
+                location="parameters.bsn",
+                evidence={
+                    "observed": drift.observed,
+                    "fixed_in_version": drift.fixed_in_version or "unknown",
+                },
+            )
+    return None
+
+
 @register_check("setup_warmup_ratio")
 def setup_warmup_ratio(project: TxtInOutProject) -> CheckResult | None:
     """Warn when ``print.prt`` ``nyskip`` is implausibly low or wasteful.
@@ -337,6 +361,7 @@ def setup_pet_method_vs_climate(project: TxtInOutProject) -> list[CheckResult]:
 
 
 __all__ = [
+    "setup_bsn_day_lag_max_as_float",
     "setup_files_present",
     "setup_mgt_date_order",
     "setup_object_count_consistency",
