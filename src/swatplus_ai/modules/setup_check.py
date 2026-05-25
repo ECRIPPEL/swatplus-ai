@@ -21,7 +21,9 @@ Three concerns, one module:
 
 from __future__ import annotations
 
+import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -36,10 +38,14 @@ from swatplus_ai.parser.txtinout import TxtInOutProject
 from swatplus_ai.prompts import (
     FormattedResponse,
     ProjectSummary,
+    StaticPassage,
+    build_grounded_module1_prompt,
     build_module1_prompt,
     collect_handles,
     format_module1_response,
 )
+
+_LOG = logging.getLogger(__name__)
 
 _SEVERITY_STYLE = {
     "error": "bold red",
@@ -65,6 +71,9 @@ async def run_setup_check(
     backend: LLMBackend,
     skip_llm: bool = False,
     stage: str = "setup",
+    stream: bool = False,
+    on_delta: Callable[[str], None] | None = None,
+    model: str | None = None,
 ) -> SetupCheckResult:
     """Parse ``path``, run setup rules, and optionally call the LLM.
 
@@ -85,6 +94,21 @@ async def run_setup_check(
         Diagnostic pipeline stage. Defaults to ``"setup"`` because that
         is the only stage wired into Module 1 today; the kwarg is kept
         so Module 2/3 can reuse the orchestrator without a fork.
+    stream:
+        When ``True``, dispatch via :meth:`LLMBackend.stream` and
+        accumulate deltas into the final response text. When ``False``
+        (default), a single :meth:`LLMBackend.complete` call is made —
+        cheaper, and still the right choice for tests and for
+        :class:`MockBackend` where tokens land in one shot anyway.
+        Ignored when ``skip_llm`` is ``True``.
+    on_delta:
+        Optional observer invoked for each streamed text chunk. A
+        terminal renderer uses this to update a ``rich.live.Live``
+        panel; tests use it to assert chunk order. Ignored when
+        ``skip_llm`` or ``stream`` are ``False``.
+    model:
+        Model id to request. ``None`` lets the backend use its
+        ``DEFAULT_MODEL``.
     """
     t0 = time.perf_counter()
     project = TxtInOutProject.read(path)
@@ -94,10 +118,36 @@ async def run_setup_check(
 
     response: FormattedResponse | None = None
     if not skip_llm:
-        messages = build_module1_prompt(list(findings), summary)
-        llm_response = await backend.complete(messages)
-        known = collect_handles(findings)
-        response = format_module1_response(llm_response.text, known)
+        passages: tuple[StaticPassage, ...] = ()
+        try:
+            messages, passages = build_grounded_module1_prompt(list(findings), summary)
+        except Exception as exc:
+            # Grounding already swallows per-finding retriever exceptions
+            # (`retrieve_passages_for_findings` logs + continues), so this
+            # only fires on a genuinely broken prompt-build path — e.g. a
+            # future retrieval-API change that raises at import / setup, or
+            # a bug in the composition layer. Fall back to the un-grounded
+            # prompt so the user still gets findings + a formatted reply
+            # rather than a stack trace, and log loudly so the regression
+            # is visible in session logs.
+            _LOG.warning(
+                "grounded prompt build failed (%s: %s); falling back to un-grounded prompt",
+                type(exc).__name__,
+                exc,
+            )
+            messages = build_module1_prompt(list(findings), summary)
+        if stream:
+            chunks: list[str] = []
+            async for delta in backend.stream(messages, model=model):
+                chunks.append(delta)
+                if on_delta is not None:
+                    on_delta(delta)
+            raw_text = "".join(chunks)
+        else:
+            llm_response = await backend.complete(messages, model=model)
+            raw_text = llm_response.text
+        known = collect_handles(findings, passages)
+        response = format_module1_response(raw_text, known)
 
     duration_ms = round((time.perf_counter() - t0) * 1000)
     return SetupCheckResult(

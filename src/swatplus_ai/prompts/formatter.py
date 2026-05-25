@@ -24,12 +24,17 @@ from swatplus_ai.prompts.builder import StaticPassage
 
 # Permissive character class — the documented convention is lowercase +
 # digits + underscores (``swatplus_io_spec``, ``plunge_2024``), and we
-# also tolerate hyphens and dots because future doc handles plausibly
-# want them (``swatplus-editor-check``, ``moriasi.2015``). Single-line
-# by design: ``[doc:foo\nbar]`` across newlines never matches, nor do
-# nested brackets. One capture group per marker, greedy over the
-# character class.
-_CITATION_PATTERN = re.compile(r"\[doc:([A-Za-z0-9_.\-]+)\]")
+# also tolerate hyphens, dots, and colons: hyphens / dots cover legacy
+# bare handles (``swatplus-editor-check``, ``moriasi.2015``); colons
+# cover the retrieval-layer handle shape where the source prefix and
+# section slug are separated by colons (``io:time.sim:day-start``,
+# ``io:parameters.bsn:day-lag-max``). The ``doc:`` prefix is marker
+# syntax, not part of the handle, so ``[doc:io:time.sim:day-start]``
+# captures ``io:time.sim:day-start`` and matches a ``StaticPassage``
+# whose ``id`` was stripped of its ``doc:`` prefix by the grounding
+# layer. Single-line by design: ``[doc:foo\nbar]`` across newlines
+# never matches, nor do nested brackets.
+_CITATION_PATTERN = re.compile(r"\[doc:([A-Za-z0-9_.\-:]+)\]")
 
 
 class Citation(BaseModel):

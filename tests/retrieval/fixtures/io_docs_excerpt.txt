@@ -1,0 +1,500 @@
+# Introduction to SWAT+
+
+Over the past 20 years, the Soil and Water Assessment Tool (SWAT) has become widely used across the globe. Various applications of the model have revealed limitations and identified model development needs. Numerous additions and modifications of the model and its individual components have made the code increasingly difficult to manage and maintain. In response to these issues and in order to face present and future challenges in water resources modeling, the SWAT code has undergone major modifications over the past few years, resulting in SWAT+, a completely restructured version of the model.  Even though the basic algorithms used to calculate the processes in the model have not changed, the structure and organization of both the code (object based) and the input files (relational based) have been modified significantly. This is expected to facilitate model maintenance, future code modifications, and foster collaboration with other researchers to integrate new science into SWAT modules. Additionally, SWAT+ provides a more flexible spatial representation of interactions and processes within a watershed.
+
+SWAT was developed by USDA-ARS and Texas A\&M scientists.
+
+
+# Watershed Configuration
+
+SWAT+ offers considerable flexibility with regard to the configuration of a watershed. The elements of a watershed are defined as spatial objects:
+
+* Landscape Unit
+* Routing Unit
+* HRU
+* Aquifer
+* Channel
+* Reservoir
+*
+
+Gravity-based exchange of water between spatial objects is defined in so-called connect files.&#x20;
+
+
+# Spatial Objects
+
+## Landscape Unit
+
+A Landscape Unit is a collection of HRUs. A Landscape Unit can be equivalent to a subbasin, a floodplain or upland unit, or a grid cell with multiple HRUs. Landscape Units are only used for output. Two input files are required to define which HRUs belong to which Landscape Unit:  1) landscape elements and, 2) landscape define. The elements file includes HRUs and their corresponding LSU fraction and basin fractions. The define file specifies which HRUs are contained in each LSU. &#x20;
+
+## Routing Unit
+
+The routing unit is the spatial unit in SWAT+ that allows us to lump outputs and route them to any other spatial object. The routing unit can be configured as a subbasin, then total flow (surface, lateral and tile flow) from the routing unit can be sent to a channel and all recharge from the routing unit sent to an aquifer. This is analogous to the current approach in SWAT. However, SWAT+ gives us much more flexibility in configuring a routing unit. For example, in CEAP, we are routing each HRU (field) through a small channel (gully or grass waterway) before it reaches the main channel. In this case, the routing unit is a collection of flow from the small channels. We also envision simulating multiple representative hillslopes to define a routing unit. Also, we are setting up scenarios that define a routing unit using tile flow from multiple fields and sending that flow to a wetland. Routing units will continue to be a convenient way of spatial lumping until we can simulate individual fields or cells in each basin. &#x20;
+
+
+# Calibration
+
+Seibert and McDonnell (2002) suggested the use of “hard” and “soft” data for multi-criteria model calibration. Hard data are defined as measured time series, typically at a point (e.g., streamflow, groundwater levels, or soil moisture) that is commonly used in regression-based calibration techniques. Soft data are defined as information on individual processes within a balance that may not be directly measured in the study area, may be an average annual estimate, and may entail considerable uncertainty. Examples of soft data include regional estimates of baseflow ratios or ET, average depths of groundwater tables, average annual runoff coefficients for various land uses, annual rates of denitrification from research plots found in the literature, event mean concentrations, nutrient/sediment export coefficients, sediment deposition from reservoir sedimentation studies, average crop/vegetation LAI,  and county crop yields (Arnold et al., 2015).&#x20;
+
+## Soft calibration procedure
+
+Seibert and McDonnell (2002) argued that soft data represent a new dimension to the model calibration process that could: (1) enable dialog between experimentalists and modelers, (2) be a formal check on the reasonableness and consistency of internal model structures and simulations, and (3) specify realistic parameter ranges often ignored in today’s automatic calibration routines.
+
+Misrepresented processes (water balance, nutrient balance, sediment source/sinks) within a watershed can cause errors when running management scenarios (Arnold et al., 2015). To ensure proper process representation, a soft calibration routine for water balance was added to SWAT+ code. The processes calibrated are surface runoff, lateral soil flow, percolation, and ET. Tile flow variables are not adjusted, if subsurface tiles are present, tile flow is simulated as the remainder of the water balance when all other processes are calibrated. The processes are input as the ratio to precipitation, thus minimizing the impact of different periods of record or different sources of precipitation. The procedure is a simple, heuristic approach with one variable for each process. The variables, associated process, change type, change limits, and total limits are listed in the table below.&#x20;
+
+| Variable | Process           | Change Type | Lower Change Limit | Upper Change Limit | Lower Limit | Upper Limit |
+| -------- | ----------------- | ----------- | ------------------ | ------------------ | ----------- | ----------- |
+| esco     | ET                | absolute    | -1.                | 1.                 | 0.          | 1.          |
+| petco    | PET               | percent     | -20.               | 20.                | 0.8         | 1.2         |
+| cn3\_swf | Surface runoff    | absolute    | -1.                | 1.                 | 0.          | 1.          |
+| latq\_co | Lateral soil flow | absolute    | -1.                | 1.                 | 0.          | 1.          |
+| perco    | Percolation       | absolute    | -0.7               | 0.7                | 0.          | 1.          |
+
+The algorithm uses one variable at a time in the following order: 1) esco, 2) petco, 3) cn3\_swf, 4) latq\_co, 5) perco, and 6) cn3\_swf is calibrated again to ensure surface runoff is accurate. The first iteration with each variable is an initial guess calculated as shown in the table below. In each case, the initial change in each variable is a function of the difference (mm) in the soft ratio multiplied by precipitation minus the modeled process output. For example, if the surface runoff ratio input by the user is 0.2 and the simulated precipitation and surface runoff are 800 mm and 120 mm, respectively, the difference is 0.2\*800 – 120 = 40 mm.&#x20;
+
+| Variable | Initial Change               |
+| -------- | ---------------------------- |
+| esco     | (ETsoft – ETsim) / 500.      |
+| petco    | (ETsoft – ETsim) / ETsoft    |
+| cn3\_swf | -(SURQsoft – SURQsim) / 100. |
+| latq\_co | (LATQsoft – LATQsim) / 400.  |
+| perco    | (PERCsoft – PERCsim) / 1000. |
+
+After the initial variable change, two additional iterations are performed using linear interpolation between the previous two simulations. Although the process response to the variable change is nonlinear, as the model iterates and approaches the soft data value, the linear interpolation is able to reasonably approximate the soft data. For the surface runoff example, with an initial difference of 40 mm, the next value of cn3\_swf used in the calibration would be set to cn3\_swf –0.4.
+
+After the soft calibration is complete, the hard calibration of streamflow should only require some adjustments of the peaks and recessions.
+
+
+# Input File Format
+
+All SWAT+ input files are free format and space delimited.&#x20;
+
+The first line in each input file is reserved for a title. If the files were written using the SWAT+ Editor, the title will specify the name of the file, the version of the SWAT+ Editor, and the date and time the file was written. While this line is required, it is not read in by SWAT+ and may be modified or left blank. The title is limited to 80 spaces. &#x20;
+
+The second line in all SWAT+ input files except for file.cio is reserved for the header, i.e. the names of the variables listed in the file. Some files will have additional header lines (e.g., print.prt).&#x20;
+
+
+# Master File (file.cio)
+
+This file lists the names of all input files used in a simulation run. The files are grouped in different categories and there is one line for each category. The first column lists the names of the categories. The number of columns per line depends on the number of files in a category. Most files are required for all SWAT+ runs, i.e. they have to be listed in file.cio and the corresponding file has to be present in the TxtInOut folder of the SWAT+ project. There are also some optional files that are only required for specific SWAT+ applications. The category names and their files are listed below. &#x20;
+
+{% hint style="info" %}
+If a file is not being used for a SWAT+ application, 'null' should be entered instead of the filename.&#x20;
+{% endhint %}
+
+#### Simulation
+
+1. [time.sim](https://swatplus.gitbook.io/io-docs/introduction-1/simulation-settings/time.sim)
+2. [print.prt](https://swatplus.gitbook.io/io-docs/introduction-1/simulation-settings/print.prt)
+3. [object.prt](https://swatplus.gitbook.io/io-docs/introduction-1/simulation-settings/object.prt)
+4. [object.cnt](https://swatplus.gitbook.io/io-docs/introduction-1/simulation-settings/object.cnt)
+5. constituents.cs
+
+#### Basin
+
+1. [codes.bsn](https://swatplus.gitbook.io/io-docs/introduction-1/basin-1/codes.bsn)
+2. [parameters.bsn](https://swatplus.gitbook.io/io-docs/introduction-1/basin-1/parameters.bsn)
+
+#### Climate
+
+1. [weather-sta.cli](https://swatplus.gitbook.io/io-docs/introduction-1/climate/weather-sta.cli)
+2. [weather-wgn.cli](https://swatplus.gitbook.io/io-docs/introduction-1/climate/weather-wgn.cli)
+3. wind-dir.cli (currently not used)
+4. [pcp.cli](https://swatplus.gitbook.io/io-docs/introduction-1/climate/pcp.cli-and-precipitation-data-files)
+5. [tmp.cli](https://swatplus.gitbook.io/io-docs/introduction-1/climate/tmp.cli-and-temperature-data-files)
+6. [slr.cli](https://swatplus.gitbook.io/io-docs/introduction-1/climate/slr.cli-and-solar-radiation-data-files)
+7. [hmd.cli](https://swatplus.gitbook.io/io-docs/introduction-1/climate/hmd.cli-and-humidity-data-files)
+8. [wnd.cli](https://swatplus.gitbook.io/io-docs/introduction-1/climate/wnd.cli-and-wind-speed-data-files)
+9. [atmo.cli](https://swatplus.gitbook.io/io-docs/introduction-1/climate/atmo.cli)
+
+#### Connect
+
+1. [hru.con](https://swatplus.gitbook.io/io-docs/introduction-1/connectivity/hru.con)
+2. [hru-lte.con](https://swatplus.gitbook.io/io-docs/introduction-1/connectivity/hru.con)
+3. [rout\_unit.con](https://swatplus.gitbook.io/io-docs/introduction-1/connectivity/hru.con)
+4. gwflow\.con (a description of the gwflow module and all related input files will be added asap)
+5. [aquifer.con](https://swatplus.gitbook.io/io-docs/introduction-1/connectivity/hru.con)
+6. aquifer2d.con (currently not used)
+7. channel.con (currently not used)
+8. [reservoir.con](https://swatplus.gitbook.io/io-docs/introduction-1/connectivity/hru.con)
+9. [recall.con](https://swatplus.gitbook.io/io-docs/introduction-1/connectivity/hru.con)
+10. [exco.con](https://swatplus.gitbook.io/io-docs/introduction-1/connectivity/hru.con)
+11. [delratio.con](https://swatplus.gitbook.io/io-docs/introduction-1/connectivity/hru.con)
+12. [outlet.con](https://swatplus.gitbook.io/io-docs/introduction-1/connectivity/hru.con)
+13. [chandeg.con](https://swatplus.gitbook.io/io-docs/introduction-1/connectivity/hru.con)
+
+#### Channel
+
+1. [initial.cha](https://swatplus.gitbook.io/io-docs/introduction-1/channels/initial.cha)
+2. channel.cha (currently not used)
+3. hydrology.cha (currently not used)
+4. sediment.cha (currently not used)
+5. [nutrients.cha](https://swatplus.gitbook.io/io-docs/introduction-1/channels/nutrients.cha)
+6. [channel-lte.cha](https://swatplus.gitbook.io/io-docs/introduction-1/channels/channel-lte.cha)
+7. [hyd-sed-lte.cha](https://swatplus.gitbook.io/io-docs/introduction-1/channels/hyd-sed-lte.cha)
+8. temperature.cha
+
+#### Reservoir
+
+1. [initial.res](https://swatplus.gitbook.io/io-docs/introduction-1/reservoirs/initial.res)
+2. [reservoir.res](https://swatplus.gitbook.io/io-docs/introduction-1/reservoirs/reservoir.res)
+3. [hydrology.res](https://swatplus.gitbook.io/io-docs/introduction-1/reservoirs/hydrology.res)
+4. [sediment.res](https://swatplus.gitbook.io/io-docs/introduction-1/reservoirs/sediment.res)
+5. [nutrients.res](https://swatplus.gitbook.io/io-docs/introduction-1/reservoirs/nutrients.res)
+6. [weir.res](https://swatplus.gitbook.io/io-docs/introduction-1/reservoirs/weir.res)
+7. [wetland.wet](https://swatplus.gitbook.io/io-docs/introduction-1/wetlands/wetland.wet)
+8. [hydrology.wet](https://swatplus.gitbook.io/io-docs/introduction-1/wetlands/hydrology.wet)
+
+#### Routing Unit
+
+1. [rout\_unit.def](https://swatplus.gitbook.io/io-docs/introduction-1/routing-units/untitled-1)
+2. [rout\_unit.ele](https://swatplus.gitbook.io/io-docs/introduction-1/routing-units/untitled-2)
+3. [rout\_unit.rtu](https://swatplus.gitbook.io/io-docs/introduction-1/routing-units/untitled)
+4. rout\_unit.dr (currently not used)
+
+#### HRU
+
+1. [hru-data.hru](https://swatplus.gitbook.io/io-docs/introduction-1/hydrologic-response-units/hru-data.hru)
+2. [hru-lte.hru](https://swatplus.gitbook.io/io-docs/introduction-1/hydrologic-response-units/hru-lte.hru)
+
+#### Export Coefficient
+
+1. exco.exc&#x20;
+2. exco\_om.exc
+3. exco\_pest.exc (currently not used)
+4. exco\_path.exc (currently not used)
+5. exco\_hmet.exc (currently not used)
+6. exco\_salt.exc (currently not used)
+
+#### Recall
+
+1. recall.rec
+
+#### Delivery Ratio
+
+1. del\_ratio.del (currently not used)
+2. dr\_om.del (currently not used)
+3. dr\_pest.del (currently not used)
+4. dr\_path.del (currently not used)
+5. dr\_hmet.del (currently not used)
+6. dr\_salt.del (currently not used)
+
+{% hint style="warning" %}
+The delivery ratio files will be removed in future versions of SWAT+.
+{% endhint %}
+
+#### Aquifer
+
+1. [initial.aqu](https://swatplus.gitbook.io/io-docs/introduction-1/aquifers/initial.aqu)
+2. [aquifer.aqu](https://swatplus.gitbook.io/io-docs/introduction-1/aquifers/aquifer.aqu)
+
+#### Herd
+
+1. animal.hrd (currently not used)
+2. herd.hrd (currently not used)
+3. ranch.hrd (currently not used)
+
+{% hint style="warning" %}
+There are no plans to work on the animal herd module in the foreseeable future unless there is a demand for it in the user community.
+{% endhint %}
+
+#### Water Rights
+
+1. water\_allocation.wro
+
+{% hint style="warning" %}
+The SWAT+ Water Allocation Module is work in progress and not fully functional in the current revision. A description of the general approach as well as input/output files will be added before the release of the next SWAT+ revision.&#x20;
+{% endhint %}
+
+#### Link
+
+1. chan-surf.lin&#x20;
+2. aqu\_cha.lin&#x20;
+
+#### Hydrology
+
+1. [hydrology.hyd](https://swatplus.gitbook.io/io-docs/introduction-1/hydrology/hydrology.hyd)
+2. [topography.hyd](https://swatplus.gitbook.io/io-docs/introduction-1/hydrology/topography.hyd)
+3. [field.fld](https://swatplus.gitbook.io/io-docs/introduction-1/hydrology/field.fld)
+
+#### Structural
+
+1. [tiledrain.str](https://swatplus.gitbook.io/io-docs/introduction-1/structural-practices/tiledrain.str)
+2. [septic.str](https://swatplus.gitbook.io/io-docs/introduction-1/structural-practices/septic.str)
+3. [filterstrip.str](https://swatplus.gitbook.io/io-docs/introduction-1/structural-practices/filterstrip.str)
+4. [grassedww.str](https://swatplus.gitbook.io/io-docs/introduction-1/structural-practices/grassedww.str)
+5. [bmpuser.str](https://swatplus.gitbook.io/io-docs/introduction-1/structural-practices/bmpuser.str)
+
+#### HRU Databases
+
+1. [plants.plt](https://swatplus.gitbook.io/io-docs/introduction-1/databases/plants.plt)
+2. [fertilizer.frt](https://swatplus.gitbook.io/io-docs/introduction-1/databases/fertilizer.frt)
+3. [tillage.til](https://swatplus.gitbook.io/io-docs/introduction-1/databases/tillage.til)
+4. [pesticide.pes](https://swatplus.gitbook.io/io-docs/introduction-1/databases/pesticide.pes)
+5. pathogens.pth (currently not used)
+6. metals.mtl (currently not used)
+7. salt.slt (currently not used)
+8. [urban.urb](https://swatplus.gitbook.io/io-docs/introduction-1/databases/urban.urb)
+9. [septic.sep](https://swatplus.gitbook.io/io-docs/introduction-1/databases/septic.sep)
+10. [snow.sno](https://swatplus.gitbook.io/io-docs/introduction-1/hydrology/snow.sno)
+
+{% hint style="warning" %}
+The salt routines are work in progress and will be added soon. However, there are no plans to work on the pathogen and metal routines in the foreseeable future unless there is a demand for it in the user community.
+{% endhint %}
+
+#### Operation Scheduling
+
+1. [harv.ops](https://swatplus.gitbook.io/io-docs/introduction-1/management-practices/harv.ops)
+2. [graze.ops](https://swatplus.gitbook.io/io-docs/introduction-1/management-practices/graze.ops)
+3. [irr.ops](https://swatplus.gitbook.io/io-docs/introduction-1/management-practices/irr.ops)
+4. [chem\_app.ops](https://swatplus.gitbook.io/io-docs/introduction-1/management-practices/chem_app.ops)
+5. [fire.ops](https://swatplus.gitbook.io/io-docs/introduction-1/management-practices/fire.ops)
+6. [sweep.ops](https://swatplus.gitbook.io/io-docs/introduction-1/management-practices/sweep.ops)
+
+#### Land Use Management
+
+1. [landuse.lum](https://swatplus.gitbook.io/io-docs/introduction-1/landuse-and-management/landuse.lum)
+2. [management.sch](https://swatplus.gitbook.io/io-docs/introduction-1/landuse-and-management/management.sch)
+3. [cntable.lum](https://swatplus.gitbook.io/io-docs/introduction-1/landuse-and-management/cntable.lum)
+4. [cons\_practice.lum](https://swatplus.gitbook.io/io-docs/introduction-1/landuse-and-management/cons_practice.lum)
+5. [ovn\_table.lum](https://swatplus.gitbook.io/io-docs/introduction-1/landuse-and-management/ovn_table.lum)
+
+#### Change
+
+1. cal\_parms.cal
+2. calibration.cal
+3. codes.sft
+4. wb\_parms.sft
+5. water\_balance.sft
+6. ch\_sed\_budget.sft (currently not used)
+7. ch\_sed\_parms.sft (currently not used)
+8. plant\_parms.sft&#x20;
+9. plant\_gro.sft&#x20;
+
+#### Initial
+
+1. [plant.ini](https://swatplus.gitbook.io/io-docs/introduction-1/landuse-and-management/plant.ini)
+2. [soil\_plant.ini](https://swatplus.gitbook.io/io-docs/introduction-1/initialization/soil_plant.ini)
+3. om\_water.ini&#x20;
+4. pest\_hru.ini&#x20;
+5. pest\_water.ini
+6. path\_hru.ini (currently not used)
+7. path\_water.ini (currently not used)
+8. hmet\_hru.ini (currently not used)
+9. hmet\_water.ini (currently not used)
+10. salt\_hru.ini (currently not used)
+11. salt\_water.ini (currently not used)
+
+#### Soils
+
+1. [soils.sol](https://swatplus.gitbook.io/io-docs/introduction-1/soils/soils.sol)
+2. [nutrients.sol](https://swatplus.gitbook.io/io-docs/introduction-1/soils/nutrients.sol)
+3. soils\_lte.sol (currently not used)
+
+#### Conditional
+
+1. [lum.dtl](https://swatplus.gitbook.io/io-docs/introduction-1/decision-tables/lum.dtl)
+2. res\_rel.dtl&#x20;
+3. scen\_lu.dtl&#x20;
+4. flo\_con.dtl&#x20;
+
+#### Regions
+
+1. [ls\_unit.ele](https://swatplus.gitbook.io/io-docs/introduction-1/landscape-units/ls_unit.ele)
+2. [ls\_unit.def](https://swatplus.gitbook.io/io-docs/introduction-1/landscape-units/ls_unit.def)
+3. ls\_reg.ele&#x20;
+4. ls\_reg.def&#x20;
+5. ls\_cal.reg&#x20;
+6. ch\_catunit.ele&#x20;
+7. ch\_catunit.def&#x20;
+8. ch\_reg.def&#x20;
+9. aqu\_catunit.ele&#x20;
+10. aqu\_catunit.def&#x20;
+11. aqu\_reg.def&#x20;
+12. res\_catunit.ele&#x20;
+13. res\_catunit.def&#x20;
+14. res\_reg.def&#x20;
+15. rec\_catunit.ele&#x20;
+16. rec\_catunit.def&#x20;
+17. rec\_reg.def&#x20;
+
+{% hint style="warning" %}
+The definition of regions in SWAT+ besides the Landscape Units will be revised in the near future and a description of the region files will be added to this documentation as soon as that has happened.&#x20;
+{% endhint %}
+
+The last five rows in file.cio are used to specify the climate file directories if these are stored in a folder other than the project TxtInOut folder.&#x20;
+
+{% hint style="info" %}
+If the climate files are stored in the project TxtInOut folder, 'null' should be entered instead of the directory.&#x20;
+{% endhint %}
+
+
+# Simulation Settings
+
+There are three files that control the settings for a simulation run:
+
+* [**object.cnt**](https://swatplus.gitbook.io/io-docs/introduction-1/simulation-settings/object.cnt) specifies the land area and the total area (including ponds and reservoirs) of the watershed and the counts of all spatial objects in a simulation,
+* [**time.sim**](https://swatplus.gitbook.io/io-docs/introduction-1/simulation-settings/time.sim) controls the simulation time period and time step, and
+* [**print.prt**](https://swatplus.gitbook.io/io-docs/introduction-1/simulation-settings/print.prt) controls which output files will be printed for a simulation.
+
+An additional, optional file, [**object.prt**](https://swatplus.gitbook.io/io-docs/introduction-1/simulation-settings/object.prt), allows the user to print selected output for individual spatial objects.
+
+
+# object.cnt
+
+This file specifies the land area and the total area (including ponds and reservoirs) of the watershed and the counts of all spatial objects in a simulation.
+
+| Field     | Description                                                | Type    |
+| --------- | ---------------------------------------------------------- | ------- |
+| name&#xD; | Name of the watershed                                      | string  |
+| ls\_area  | Land area of the watershed in ha                           | real    |
+| tot\_area | Total area of the watershed in ha                          | real    |
+| obj       | Total number of spatial objects in the simulation          | integer |
+| hru       | Number of HRUs in the simulation                           | integer |
+| lhru      | Number of HRU-ltes in the simulation                       | integer |
+| rtu       | Number of routing units in the simulation                  | integer |
+| gwfl      | Number of gwflow river cells                               | integer |
+| aqu       | Number of aquifers in the simulation                       | integer |
+| cha       | Currently not used                                         | integer |
+| res       | Number of reservoirs in the simulation                     | integer |
+| rec       | Number of recalls (point sources/inlets) in the simulation | integer |
+| exco      | Number of export coefficients in the simulation            | integer |
+| dlr       | Number of delivery ratios in the simulation                | integer |
+| can       | Currently not used                                         | integer |
+| pmp       | Currently not used                                         | integer |
+| out       | Number of outlets in the simulation                        | integer |
+| lcha      | Number of channels in the simulation                       | integer |
+| aqu2d     | Currently not used                                         | integer |
+| hrd       | Currently not used                                         | integer |
+| wro       | Currently not used                                         | integer |
+
+
+# time.sim
+
+This file controls the simulation time period and time step.
+
+| Field                                                                                                   | Description                      | Type    |
+| ------------------------------------------------------------------------------------------------------- | -------------------------------- | ------- |
+| [day\_start](https://swatplus.gitbook.io/io-docs/introduction-1/simulation-settings/time.sim/day_start) | Beginning day of the simulation  | integer |
+| [yrc\_start](https://swatplus.gitbook.io/io-docs/introduction-1/simulation-settings/time.sim/yrc_start) | Beginning year of the simulation | integer |
+| [day\_end](https://swatplus.gitbook.io/io-docs/introduction-1/simulation-settings/time.sim/day_end)     | Ending day of the simulation     | integer |
+| [yrc\_end](https://swatplus.gitbook.io/io-docs/introduction-1/simulation-settings/time.sim/yrc_end)     | Ending year of the simulation    | integer |
+| [step](https://swatplus.gitbook.io/io-docs/introduction-1/simulation-settings/time.sim/step)            | Time step of the simulation      | integer |
+
+
+# day\_start
+
+Beginning day of the simulation
+
+SWAT+ is able to begin a simulation at any day of the year. This option can for example be useful, if the user wishes to simulate hydrological years instead of calendar years.
+
+{% hint style="info" %}
+If *day\_start* = 0, the model will start the simulation on January 1st.
+
+If the simulation begins before the first day of the observed climate data, SWAT+ will use simulated climate data for the time period before the start of the observed climate data.
+{% endhint %}
+
+
+# yrc\_start
+
+Beginning year of the simulation
+
+{% hint style="info" %}
+If the simulation begins before the first day of the observed climate data, SWAT+ will use simulated climate data for the time period before the start of the observed climate data.
+{% endhint %}
+
+
+# day\_end
+
+Ending day of the simulation
+
+SWAT+ is able to end a simulation at any day of the year. This option can for example be useful, if the user wishes to simulate hydrological years instead of calendar years.
+
+{% hint style="info" %}
+If *day\_end* = 0, the model will end the simulation on December 31st.
+
+If the simulation begins before the first day of the observed climate data, SWAT+ will use simulated climate data for the time period before the start of the observed climate data.
+{% endhint %}
+
+
+# yrc\_end
+
+Ending year of the simulation
+
+{% hint style="info" %}
+If the simulation ends after the last day of the observed climate data, SWAT+ will use simulated climate data for the time period after the end of the observed climate data.
+{% endhint %}
+
+
+# step
+
+Time step of the simulation
+
+SWAT+ is able to run at the following time steps:
+
+| Code | Time Step  |
+| ---- | ---------- |
+| 0    | day        |
+| 2    | 12 hours   |
+| 24   | hour       |
+| 96   | 15 minutes |
+| 1440 | minute     |
+
+{% hint style="warning" %}
+When using the Green & Ampt method ([gampt](https://swatplus.gitbook.io/io-docs/introduction-1/basin-1/codes.bsn/abstr_init) in [**codes.bsn**](https://swatplus.gitbook.io/io-docs/introduction-1/basin-1/codes.bsn)) for calculating surface runoff, the time step of the precipitation data must match the simulation time step.
+{% endhint %}
+
+
+# print.prt
+
+This file controls which output files will be printed during the simulation.
+
+The **print.prt** file is formatted differently than most other SWAT+ input files (see figure below). In line three, there are several variables for controlling the time period to be printed. In line five, the user can specify the number of print intervals for average annual output. In line seven, the user can select to have output files printed in a specific file format (in addition to the default \*.txt output files). In line 9, the user can control the printing of outputs for soils and management as well as flow duration curves. In lines 11 to 90, there is a list of outputs for different spatial levels and objects that can be printed at daily, monthly, yearly, and average annual time steps. A description of the output files is provided in the [SWAT+ Output Files](https://swatplus.gitbook.io/io-docs/swat+-output-files) section.  &#x20;
+
+<figure><img src="https://1348478613-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2F-MTFpIHUB1K63DLhLJaf%2Fuploads%2FlEVTRUVFHAgK1ri0qIS0%2Fimage.png?alt=media&#x26;token=83495501-566c-4ccb-9963-5df56c8541e9" alt=""><figcaption><p>Format of the print.prt file</p></figcaption></figure>
+
+| Field                                                                                                       | Description                                                            | Type    |
+| ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ------- |
+| [nyskip](https://swatplus.gitbook.io/io-docs/introduction-1/simulation-settings/print.prt/nyskip)           | Number of years at the beginning of the simulation to not print output | integer |
+| day\_start                                                                                                  | Julian day to start printing output (for daily printing only)          | integer |
+| yrc\_start                                                                                                  | Calendar year to start printing output                                 | integer |
+| day\_end                                                                                                    | Julian day to stop printing output (for daily printing only)           | integer |
+| yrc\_end                                                                                                    | Calendar year to stop printing output                                  | integer |
+| [interval](https://swatplus.gitbook.io/io-docs/introduction-1/simulation-settings/print.prt/interval)       | Print interval within the period                                       | integer |
+| [aa\_int\_cnt](https://swatplus.gitbook.io/io-docs/introduction-1/simulation-settings/print.prt/aa_int_cnt) | Number of print intervals for average annual output                    | integer |
+| csvout                                                                                                      | Code for printing output in CSV format (y=yes, n=no)                   | string  |
+| dbout                                                                                                       | Code for printing output in DB format (y=yes, n=no)                    | string  |
+| cdfout                                                                                                      | Code for printing output in Net-CDF format (y=yes, n=no)               | string  |
+| crop\_yld                                                                                                   | Code for printing yearly and average annual crop yields (y=yes, n=no)  | string  |
+| mgtout                                                                                                      | Code for printing management output (y=yes, n=no)                      | string  |
+| [hydcon](https://swatplus.gitbook.io/io-docs/introduction-1/simulation-settings/print.prt/hydcon)           | Code for printing hydrograph connection output (y=yes, n=no)           | string  |
+| fdcout                                                                                                      | Code for printing flow duration curve output (y=yes, n=no)             | string  |
+| [object](https://swatplus.gitbook.io/io-docs/introduction-1/simulation-settings/print.prt/object)           | Objects that output can be printed for at different time steps         | string  |
+| daily                                                                                                       | Code for printing daily output (y=yes, n=no)                           | string  |
+| monthly                                                                                                     | Code for printing monthly output (y=yes, n=no)                         | string  |
+| yearly                                                                                                      | Code for printing yearly output (y=yes, n=no)                          | string  |
+| avann                                                                                                       | Code for printing average annual output (y=yes, n=no)                  | string  |
+
+
+# nyskip
+
+Number of years at the beginning of the simulation to not print output
+
+Some simulations will need a warm-up or equilibration period. The use of a warm-up period becomes more important as the simulation period of interest shortens. For 30-year simulations, a warm-up period is optional. For a simulation covering 5 years or less, a warm-up period is recommended.&#x20;
+
+{% hint style="info" %}
+Examples: If *nyskip* = 2, the model will skip printing the first two years regardless of the starting year. If *nyskip* = 0, output for all years of the simulation will be printed. If *nyskip* equals the number of years in the simulation, no output will be printed. &#x20;
+{% endhint %}
+
+
+# interval
+
+Print interval within the period
+
+This parameter specifies the interval within the specified printing period.&#x20;
+
+{% hint style="info" %}
+Example: If *interval* = 2, output will be printed for every other day.
+{% endhint %}
+
+
+# aa\_int\_cnt
