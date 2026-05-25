@@ -3,6 +3,7 @@ import findingsData from "@/mock/findings.json";
 import hydrographData from "@/mock/hydrograph.json";
 import iterationsData from "@/mock/iterations.json";
 import chatData from "@/mock/chat.json";
+import landuseData from "@/mock/landuse.json";
 import type {
   ActivityEntry,
   CalParameter,
@@ -10,6 +11,7 @@ import type {
   Finding,
   HydrographPoint,
   IterationResult,
+  LanduseClass,
   ProjectMeta,
 } from "./types";
 
@@ -38,6 +40,11 @@ export async function getIterations(): Promise<IterationResult[]> {
 export async function getChatHistory(): Promise<ChatMessage[]> {
   await sleep(200);
   return chatData as ChatMessage[];
+}
+
+export async function getLanduse(): Promise<LanduseClass[]> {
+  await sleep(200);
+  return landuseData as LanduseClass[];
 }
 
 export async function getCalParameters(): Promise<CalParameter[]> {
@@ -154,25 +161,62 @@ export async function getRecentActivity(): Promise<ActivityEntry[]> {
   ];
 }
 
-const MOCK_REPLIES: string[] = [
-  "Looking at your current state — the peak under-prediction pattern and the high baseflow index (0.71) are pointing at the same thing: CN2 is running too low. I'd widen CN2 to [-15%, +10%] and add GW_DELAY to the parameter set before the next iteration.",
-  "For basins the size of URU (412 km²) with clay-loam dominant soils, daily NSE above 0.65 is achievable but rarely above 0.80. Moriasi 2007 puts your current 0.58 at the satisfactory/unsatisfactory boundary — the next round should comfortably push you into satisfactory.",
-  "That symptom usually comes from one of three causes: a narrow CN2 range, a pinned ALPHA_BF, or an overzealous PET method. Your diagnostic flagged the first two; if you want, I can draft a parameter set for iteration 19.",
-  "The warmup is fine. Your 3-year warmup is adequate per Daggupati 2015 for shallow-aquifer basins — don't extend it just because the first years of simulation look odd; those are part of the warmup and are already being skipped from the metrics.",
+export type ReplyMode = "concise" | "free";
+
+const MOCK_CONCISE: string[] = [
+  "Widen CN2 to [-15%, +10%] and add GW_DELAY — peaks should climb.",
+  "ALPHA_BF is pinned at the upper bound; freeing it fixes the baseflow drift.",
+  "Daily NSE = 0.58 sits right at Moriasi's satisfactory threshold.",
+  "A 3-year warmup is adequate for shallow-aquifer basins per Daggupati 2015.",
+  "PBIAS of −8.3% is 'good' by Moriasi — the sign means slight over-prediction.",
+  "Peak under-prediction is textbook CN2-too-low for clay-loam basins.",
+  "NSE plateaued because the parameter set lost sensitivity around iteration 12.",
+  "Yes — the pcp04 gap was infilled yesterday; a re-run will pick it up.",
+];
+
+const MOCK_FREE: string[] = [
+  `Looking at your current state, two symptoms point at the same root cause:
+
+- **Peak under-prediction** on the top 10 storm events (mean error −19%)
+- **Baseflow over-prediction** during July–September recession (+12%)
+
+Both are consistent with **CN2 bound too tight** for a clay-loam basin. Recommended adjustments for iteration 19:
+
+1. Widen \`CN2\` to \`[-15%, +10%]\` (currently \`[-5%, +5%]\`)
+2. Free \`ALPHA_BF\` by widening to \`[0.01, 0.8]\` — it's pinned at the upper bound
+3. Add \`GW_DELAY\` to the set with range \`[0, 450]\` days
+
+This follows Arnold et al. 2012 and the broader Moriasi 2015 guidance for humid subtropical basins.`,
+
+  `Daily NSE of **0.58** sits right at the Moriasi 2007 boundary between *satisfactory* (≥ 0.50) and *good* (> 0.75). For a 412 km² basin on clay-loam dominant soils, expect to land in the 0.65–0.75 band with a well-calibrated parameter set — above 0.80 on daily streamflow is rare.
+
+Progression over the last 10 iterations (0.51 → 0.58) shows the sensitivity surface flattening. If the next widened run adds less than +0.02, consider pivoting to a different structural assumption (e.g. plant uptake or soil AWC) rather than squeezing more out of CN2.`,
+
+  `A 3-year warmup is **adequate** for shallow-aquifer basins. Daggupati et al. 2015 found no further reduction in output bias beyond 2 years when groundwater contributes under 50% to total flow. Your baseflow index is 0.71, so groundwater is significant but not dominant — 3 years is conservative and safe.
+
+Don't extend just because the early years look odd — **those are already excluded from the calibration metrics**. The warmup buffer is doing what it's designed to do.`,
+
+  `Draft paragraph for the results section:
+
+> The model was calibrated against daily discharge at the outlet (cha033) over 2011–2016 and validated on 2017–2019. The final calibration achieved NSE = 0.58, KGE = 0.54, and PBIAS = −8.3% — *satisfactory* for NSE and *good* for PBIAS per Moriasi et al. 2007. Residual analysis indicates systematic under-prediction of storm peaks (mean peak residual −19%), consistent with reports for humid subtropical clay-dominated basins (Arnold et al. 2012).
+
+Citations carried: \`Moriasi 2007\`, \`Arnold 2012\`, \`Daggupati 2015\`, \`White 2014\`.`,
 ];
 
 export async function streamAssistantReply(
   userText: string,
+  mode: ReplyMode,
   onChunk: (chunk: string) => void,
   signal?: AbortSignal
 ): Promise<void> {
-  await sleep(400);
-  const idx = Math.abs(hashString(userText)) % MOCK_REPLIES.length;
-  const reply = MOCK_REPLIES[idx];
+  await sleep(160);
+  const pool = mode === "concise" ? MOCK_CONCISE : MOCK_FREE;
+  const idx = Math.abs(hashString(userText)) % pool.length;
+  const reply = pool[idx];
   const words = reply.split(" ");
   for (const word of words) {
     if (signal?.aborted) return;
-    await sleep(35);
+    await sleep(22);
     onChunk(word + " ");
   }
 }
@@ -184,4 +228,65 @@ function hashString(s: string): number {
     h |= 0;
   }
   return h;
+}
+
+export interface RouteContext {
+  route: "home" | "setup" | "calibration" | "evaluation";
+  title: string;
+  placeholder: string;
+  items: string[];
+  suggestions: string[];
+}
+
+export function ctxForRoute(pathname: string): RouteContext {
+  if (pathname.startsWith("/setup")) {
+    return {
+      route: "setup",
+      title: "Setup context",
+      placeholder: "Ask about a finding, a rule, or a fix…",
+      items: ["15 findings", "2 errors", "URU basin"],
+      suggestions: [
+        "Why is pcp04 flagged with gaps?",
+        "Explain the warmup-period rule.",
+        "Can I ignore the info findings?",
+      ],
+    };
+  }
+  if (pathname.startsWith("/calibration")) {
+    return {
+      route: "calibration",
+      title: "Calibration context",
+      placeholder: "Ask about NSE, a parameter, or the next iteration…",
+      items: ["iter 30", "NSE 0.58", "8 params"],
+      suggestions: [
+        "Why is NSE stuck at 0.58?",
+        "What does ALPHA_BF do physically?",
+        "Draft a widened CN2 proposal.",
+      ],
+    };
+  }
+  if (pathname.startsWith("/evaluation")) {
+    return {
+      route: "evaluation",
+      title: "Evaluation context",
+      placeholder: "Ask about residuals, Moriasi, or the draft paragraph…",
+      items: ["NSE 0.58", "PBIAS −8.3%", "cha033"],
+      suggestions: [
+        "How does my NSE compare for similar basins?",
+        "Is PBIAS of −8.3% good or satisfactory?",
+        "Draft a paragraph for the results section.",
+      ],
+    };
+  }
+  return {
+    route: "home",
+    title: "Project context",
+    placeholder: "Ask about URU Basin, the model, or where to start…",
+    items: ["URU basin", "subtropical", "ready"],
+    suggestions: [
+      "Summarize URU basin for me.",
+      "What should I do next?",
+      "Is the warmup long enough for this biome?",
+    ],
+  };
 }

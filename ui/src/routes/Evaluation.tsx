@@ -1,30 +1,56 @@
-import { useEffect, useState } from "react";
-import { FileText, Sparkles } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Copy, FileText, Sparkles } from "lucide-react";
 import {
+  Area,
+  AreaChart,
   CartesianGrid,
-  Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip as RTooltip,
   XAxis,
   YAxis,
 } from "recharts";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import PageHeader from "@/components/PageHeader";
+import ChartTooltip from "@/components/ChartTooltip";
+import CitePop from "@/components/CitePop";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { getHydrograph, getIterations } from "@/lib/mockApi";
-import type { HydrographPoint, IterationResult } from "@/lib/types";
+  classify,
+  classBadgeVariant,
+  classLabel,
+  MoriasiBadge,
+  moriasiThresholdsLabel,
+  type MetricKind,
+  type MoriasiClass,
+} from "@/lib/moriasi";
+import { getHydrograph, getIterations } from "@/lib/client";
+import type { Citation, HydrographPoint, IterationResult } from "@/lib/types";
 import { cn, formatNumber } from "@/lib/utils";
+
+const DRAFT_CITATIONS: Citation[] = [
+  {
+    id: "m07",
+    label: "Moriasi 2007",
+    source: "Moriasi et al., Trans. ASABE 50(3), 2007 — model evaluation guidelines.",
+  },
+  {
+    id: "a12",
+    label: "Arnold 2012",
+    source: "Arnold et al., Trans. ASABE 55(4), 2012 — SWAT model development.",
+  },
+  {
+    id: "d15",
+    label: "Daggupati 2015",
+    source: "Daggupati et al., JAWRA 51(6), 2015 — warmup and validation framework.",
+  },
+  {
+    id: "w14",
+    label: "White 2014",
+    source: "White et al., JAWRA 50(5), 2014 — evapotranspiration budgets in humid basins.",
+  },
+];
 
 export default function Evaluation() {
   const [hydro, setHydro] = useState<HydrographPoint[] | null>(null);
@@ -35,285 +61,369 @@ export default function Evaluation() {
     getIterations().then(setIters);
   }, []);
 
-  const latest = iters?.[iters.length - 1];
+  const latest = iters?.[iters.length - 1] ?? null;
 
-  const metrics = latest
-    ? [
-        { label: "NSE", value: latest.nse, kind: "nse" as const, fmt: (n: number) => formatNumber(n, 3) },
-        { label: "KGE", value: latest.kge, kind: "kge" as const, fmt: (n: number) => formatNumber(n, 3) },
-        {
-          label: "PBIAS",
-          value: latest.pbias,
-          kind: "pbias" as const,
-          fmt: (n: number) => `${formatNumber(n, 1)}%`,
-        },
-        { label: "R²", value: latest.r2, kind: "r2" as const, fmt: (n: number) => formatNumber(n, 3) },
-      ]
-    : null;
+  const metrics = useMemo<
+    { label: string; value: number; kind: MetricKind; fmt: (n: number) => string }[] | null
+  >(() => {
+    if (!latest) return null;
+    return [
+      { label: "NSE", value: latest.nse, kind: "nse", fmt: (n) => formatNumber(n, 3) },
+      { label: "KGE", value: latest.kge, kind: "kge", fmt: (n) => formatNumber(n, 3) },
+      {
+        label: "PBIAS",
+        value: latest.pbias,
+        kind: "pbias",
+        fmt: (n) => `${formatNumber(n, 1)}%`,
+      },
+      { label: "R²", value: latest.r2, kind: "r2", fmt: (n) => formatNumber(n, 3) },
+    ];
+  }, [latest]);
+
+  const overall = useMemo<MoriasiClass | null>(() => {
+    if (!metrics) return null;
+    const classes = metrics.map((m) => classify(m.value, m.kind));
+    if (classes.includes("unacceptable")) return "unacceptable";
+    if (classes.every((c) => c === "good")) return "good";
+    return "satisfactory";
+  }, [metrics]);
+
+  const hydroWindow = useMemo(() => {
+    if (!hydro) return null;
+    return hydro.slice(-365);
+  }, [hydro]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="text-sm text-muted-foreground">Module 3</div>
-          <h2 className="text-2xl font-semibold tracking-tight">Evaluation</h2>
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-            Metrics classified against Moriasi 2007 guidance for daily
-            streamflow. Residuals grounded against literature for similar
-            basins.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button size="sm" variant="outline" className="gap-2">
-                <FileText className="h-3.5 w-3.5" />
-                Draft manuscript paragraph
-              </Button>
-            </DialogTrigger>
-            <DraftDialog />
-          </Dialog>
-          <Button size="sm" className="gap-2">
+    <div className="mx-auto max-w-[1280px] space-y-6">
+      <PageHeader
+        overline="Module 3 · Evaluation"
+        title="Evaluation"
+        desc="Final metrics classified against Moriasi 2007 guidance for daily streamflow. Residuals grounded against literature for comparable basins."
+        status={
+          overall ? (
+            <Badge variant={classBadgeVariant(overall)}>
+              Overall · {classLabel(overall)}
+            </Badge>
+          ) : null
+        }
+        actions={
+          <Button size="sm" variant="outline" className="gap-1.5">
             <Sparkles className="h-3.5 w-3.5" />
             Re-evaluate
           </Button>
-        </div>
-      </div>
+        }
+      />
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {metrics
-          ? metrics.map((m) => <MetricCard key={m.label} {...m} />)
+          ? metrics.map((m) => (
+              <MoriasiMetricCard
+                key={m.label}
+                label={m.label}
+                value={m.value}
+                kind={m.kind}
+                display={m.fmt(m.value)}
+              />
+            ))
           : Array.from({ length: 4 }).map((_, i) => (
-              <Card key={i}>
-                <CardContent className="space-y-3 p-5">
-                  <Skeleton className="h-3 w-14" />
-                  <Skeleton className="h-8 w-20" />
-                  <Skeleton className="h-5 w-24" />
-                </CardContent>
-              </Card>
+              <Skeleton key={i} className="h-[130px] w-full rounded-xl" />
             ))}
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Observed vs simulated — outfall cha033</CardTitle>
-          <div className="text-xs text-muted-foreground">
-            Daily discharge (m³/s) · 2013 water year
+      <Card className="shadow-card">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-[14px] font-semibold">
+            Observed vs simulated — outfall cha033
+          </CardTitle>
+          <div className="text-[11.5px] text-muted-foreground">
+            Daily discharge (m³/s) · last 365 days of simulation
           </div>
         </CardHeader>
         <CardContent>
-          <div className="h-[380px]">
-            {hydro ? (
+          <div className="h-[340px]">
+            {hydroWindow ? (
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={hydro}>
+                <AreaChart
+                  data={hydroWindow}
+                  margin={{ top: 8, right: 12, bottom: 4, left: 0 }}
+                >
+                  <defs>
+                    <linearGradient id="obsFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop
+                        offset="0%"
+                        stopColor="hsl(var(--chart-2))"
+                        stopOpacity={0.24}
+                      />
+                      <stop
+                        offset="100%"
+                        stopColor="hsl(var(--chart-2))"
+                        stopOpacity={0}
+                      />
+                    </linearGradient>
+                    <linearGradient id="simFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop
+                        offset="0%"
+                        stopColor="hsl(var(--primary))"
+                        stopOpacity={0.22}
+                      />
+                      <stop
+                        offset="100%"
+                        stopColor="hsl(var(--primary))"
+                        stopOpacity={0}
+                      />
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid
                     strokeDasharray="3 3"
                     vertical={false}
-                    stroke="hsl(var(--border))"
+                    stroke="hsl(var(--chart-grid))"
                   />
                   <XAxis
                     dataKey="date"
                     tickFormatter={(d) => (d as string).slice(5)}
                     tickLine={false}
                     axisLine={false}
-                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    tick={{
+                      fontSize: 11,
+                      fill: "hsl(var(--muted-foreground))",
+                    }}
                     minTickGap={48}
                   />
                   <YAxis
                     tickLine={false}
                     axisLine={false}
-                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    tick={{
+                      fontSize: 11,
+                      fill: "hsl(var(--muted-foreground))",
+                    }}
                     width={36}
                   />
                   <RTooltip
-                    contentStyle={{
-                      background: "hsl(var(--popover))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: 8,
-                      fontSize: 12,
-                    }}
+                    content={
+                      <ChartTooltip
+                        formatter={(v) => `${formatNumber(v, 2)} m³/s`}
+                      />
+                    }
                   />
-                  <Line
+                  <Area
                     type="monotone"
                     dataKey="observed"
                     stroke="hsl(var(--chart-2))"
-                    strokeWidth={1.6}
-                    dot={false}
+                    strokeWidth={1.4}
+                    fill="url(#obsFill)"
                     name="Observed"
+                    isAnimationActive={false}
                   />
-                  <Line
+                  <Area
                     type="monotone"
                     dataKey="simulated"
                     stroke="hsl(var(--primary))"
-                    strokeWidth={1.6}
-                    dot={false}
+                    strokeWidth={1.4}
+                    fill="url(#simFill)"
                     name="Simulated"
+                    isAnimationActive={false}
                   />
-                </LineChart>
+                </AreaChart>
               </ResponsiveContainer>
             ) : (
               <Skeleton className="h-full w-full" />
             )}
           </div>
+          <div className="mt-3 flex items-center gap-4 text-[11px] text-muted-foreground">
+            <LegendSwatch color="hsl(var(--chart-2))" label="Observed" />
+            <LegendSwatch color="hsl(var(--primary))" label="Simulated" />
+          </div>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Residual analysis</CardTitle>
-          <div className="text-xs text-muted-foreground">
-            Where the model is and isn't performing
+      <Card className="shadow-card">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-[14px] font-semibold">
+            Moriasi classification
+          </CardTitle>
+          <div className="text-[11.5px] text-muted-foreground">
+            Current metric placed inside the Moriasi 2007 daily-streamflow bands
           </div>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <InsightCard
-            title="Peak under-prediction"
-            value="-19%"
-            sub="Mean relative error on top 10 storm events"
-            tone="destructive"
-          />
-          <InsightCard
-            title="Baseflow over-prediction"
-            value="+12%"
-            sub="Recession-period bias (July–September)"
-            tone="warning"
-          />
-          <InsightCard
-            title="Timing error"
-            value="+1.2 d"
-            sub="Mean peak-arrival lag"
-            tone="info"
-          />
+        <CardContent className="space-y-4">
+          {metrics
+            ? metrics.map((m) => (
+                <ClassificationBar
+                  key={m.label}
+                  label={m.label}
+                  value={m.value}
+                  kind={m.kind}
+                  display={m.fmt(m.value)}
+                />
+              ))
+            : Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-8 w-full" />
+              ))}
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-card">
+        <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-[14px] font-semibold">
+              <FileText className="h-4 w-4 text-muted-foreground" />
+              Draft paragraph
+            </CardTitle>
+            <div className="mt-1 text-[11.5px] text-muted-foreground">
+              Generated from current metrics. Click any citation marker to
+              inspect the source.
+            </div>
+          </div>
+          <Button variant="outline" size="sm" className="gap-1.5">
+            <Copy className="h-3.5 w-3.5" />
+            Copy
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3 text-[13.5px] leading-[1.7]">
+            <p>
+              The model was calibrated against daily discharge at the basin
+              outlet (cha033) for the period 2011–2016 and validated over
+              2017–2019. The final calibration achieved NSE = 0.58, KGE = 0.54,
+              and PBIAS = −8.3%
+              <CitePop n={1} citation={DRAFT_CITATIONS[0]} />
+              {" "}(Moriasi et al. 2007 classification: <em>satisfactory</em>
+              {" "}for NSE, KGE and <em>good</em> for PBIAS).
+            </p>
+            <p>
+              Residual analysis indicates systematic under-prediction of storm
+              peaks (mean peak residual −19%), consistent with reports for
+              humid subtropical clay-dominated basins when CN2 is tightly
+              bounded
+              <CitePop n={2} citation={DRAFT_CITATIONS[1]} />. Baseflow
+              separation yields a simulated baseflow index of 0.71 versus an
+              observed 0.58; further iterations relaxing ALPHA_BF and GW_DELAY
+              are expected to close this gap
+              <CitePop n={3} citation={DRAFT_CITATIONS[3]} />.
+            </p>
+            <p>
+              Warmup (3 years) meets the threshold recommended for
+              shallow-aquifer basins
+              <CitePop n={4} citation={DRAFT_CITATIONS[2]} />
+              {" "}and was excluded from all reported metrics.
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>
   );
 }
 
-function MetricCard({
+function MoriasiMetricCard({
   label,
   value,
   kind,
-  fmt,
+  display,
 }: {
   label: string;
   value: number;
-  kind: "nse" | "kge" | "pbias" | "r2";
-  fmt: (n: number) => string;
+  kind: MetricKind;
+  display: string;
 }) {
-  const cls = classify(value, kind);
-  const variant =
-    cls === "good"
-      ? "success"
-      : cls === "satisfactory"
-        ? "warning"
-        : "destructive";
-  const clsLabel =
-    cls === "good"
-      ? "Good"
-      : cls === "satisfactory"
-        ? "Satisfactory"
-        : "Unacceptable";
   return (
-    <Card>
-      <CardContent className="p-5">
-        <div className="text-xs uppercase tracking-wider text-muted-foreground">
+    <Card className="shadow-card">
+      <CardContent className="p-4">
+        <div className="text-[10.5px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
           {label}
         </div>
-        <div className="mt-1 text-3xl font-semibold tracking-tight">
-          {fmt(value)}
+        <div className="mt-1.5 text-[28px] font-semibold leading-none tracking-[-0.02em] tabular-nums">
+          {display}
         </div>
-        <Badge variant={variant} className="mt-2 text-[10px]">
-          Moriasi · {clsLabel}
-        </Badge>
+        <div className="mt-3">
+          <MoriasiBadge value={value} kind={kind} />
+        </div>
+        <div className="mt-2 font-mono text-[10.5px] text-muted-foreground">
+          {moriasiThresholdsLabel(kind)}
+        </div>
       </CardContent>
     </Card>
   );
 }
 
-function InsightCard({
-  title,
+function ClassificationBar({
+  label,
   value,
-  sub,
-  tone,
+  kind,
+  display,
 }: {
-  title: string;
-  value: string;
-  sub: string;
-  tone: "destructive" | "warning" | "info";
+  label: string;
+  value: number;
+  kind: MetricKind;
+  display: string;
 }) {
-  const toneMap = {
-    destructive: "text-destructive",
-    warning: "text-amber-600 dark:text-amber-400",
-    info: "text-sky-600 dark:text-sky-400",
-  } as const;
+  const cls = classify(value, kind);
+  let unacceptPct: number;
+  let satPct: number;
+  let goodPct: number;
+  let markerPct: number;
+
+  if (kind === "pbias") {
+    unacceptPct = 100 / 3;
+    satPct = 100 / 3;
+    goodPct = 100 - unacceptPct - satPct;
+    const abs = Math.min(30, Math.abs(value));
+    markerPct = 100 - (abs / 30) * 100;
+  } else {
+    unacceptPct = 50;
+    satPct = 25;
+    goodPct = 25;
+    const clamped = Math.max(0, Math.min(1, value));
+    markerPct = clamped * 100;
+  }
+
   return (
-    <div className="rounded-xl border p-4">
-      <div className="text-xs text-muted-foreground">{title}</div>
-      <div className={cn("mt-2 text-2xl font-semibold", toneMap[tone])}>
-        {value}
+    <div>
+      <div className="mb-1.5 flex items-baseline justify-between">
+        <div className="flex items-baseline gap-2">
+          <span className="text-[12.5px] font-medium">{label}</span>
+          <span className="font-mono text-[12px] tabular-nums text-muted-foreground">
+            {display}
+          </span>
+        </div>
+        <span className="text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground">
+          {classLabel(cls)}
+        </span>
       </div>
-      <div className="mt-1 text-xs text-muted-foreground">{sub}</div>
+      <div className="relative h-2.5 w-full overflow-hidden rounded-full border">
+        <div
+          className="absolute inset-y-0 left-0 bg-red-500/22"
+          style={{ width: `${unacceptPct}%` }}
+        />
+        <div
+          className="absolute inset-y-0 bg-amber-500/22"
+          style={{ left: `${unacceptPct}%`, width: `${satPct}%` }}
+        />
+        <div
+          className="absolute inset-y-0 bg-emerald-500/22"
+          style={{ left: `${unacceptPct + satPct}%`, width: `${goodPct}%` }}
+        />
+        <span
+          className={cn(
+            "absolute top-[-3px] bottom-[-3px] w-[2px] rounded-sm",
+            cls === "good" && "bg-emerald-600",
+            cls === "satisfactory" && "bg-amber-600",
+            cls === "unacceptable" && "bg-red-600"
+          )}
+          style={{ left: `calc(${markerPct}% - 1px)` }}
+        />
+      </div>
     </div>
   );
 }
 
-function classify(
-  value: number,
-  kind: "nse" | "kge" | "pbias" | "r2"
-): "good" | "satisfactory" | "unacceptable" {
-  if (kind === "pbias") {
-    const a = Math.abs(value);
-    return a < 10 ? "good" : a < 15 ? "satisfactory" : "unacceptable";
-  }
-  return value > 0.75
-    ? "good"
-    : value >= 0.5
-      ? "satisfactory"
-      : "unacceptable";
-}
-
-function DraftDialog() {
+function LegendSwatch({ color, label }: { color: string; label: string }) {
   return (
-    <DialogContent className="max-w-2xl">
-      <DialogHeader>
-        <DialogTitle>Draft results-section paragraph</DialogTitle>
-        <DialogDescription>
-          Generated from the current evaluation metrics, grounded in the
-          Literature DB.
-        </DialogDescription>
-      </DialogHeader>
-      <ScrollArea className="max-h-[400px] pr-4">
-        <div className="space-y-3 text-sm leading-relaxed">
-          <p>
-            The model was calibrated against daily discharge at the basin outlet
-            (cha033) for the period 2011–2016 and validated over 2017–2019. The
-            final calibration achieved NSE = 0.58, KGE = 0.54, and PBIAS = −8.3%
-            (Moriasi et al. 2007 classification: <em>satisfactory</em> for NSE
-            and <em>good</em> for PBIAS).
-          </p>
-          <p>
-            Residual analysis indicates systematic under-prediction of storm
-            peaks (mean peak residual: −19%), consistent with reports for humid
-            subtropical clay-dominated basins when CN2 is tightly bounded
-            (Arnold et al. 2012). Baseflow separation yields a simulated
-            baseflow index of 0.71 versus an observed 0.58; further calibration
-            iterations relaxing ALPHA_BF and GW_DELAY are expected to close this
-            gap.
-          </p>
-          <div className="flex flex-wrap gap-2 pt-2">
-            <Badge variant="outline">Moriasi 2007</Badge>
-            <Badge variant="outline">Arnold 2012</Badge>
-            <Badge variant="outline">White 2014</Badge>
-          </div>
-        </div>
-      </ScrollArea>
-      <div className="flex items-center justify-end gap-2 pt-2">
-        <Button variant="outline" size="sm">
-          Copy to clipboard
-        </Button>
-        <Button size="sm">Export .docx</Button>
-      </div>
-    </DialogContent>
+    <span className="inline-flex items-center gap-1.5">
+      <span
+        className="inline-block h-[2px] w-3 rounded-full"
+        style={{ backgroundColor: color }}
+      />
+      {label}
+    </span>
   );
 }

@@ -1,39 +1,19 @@
+// Shapes generated from `src/swatplus_ai/api/models.py` are the canonical
+// wire contract for the three endpoints migrated in slice 3.4 (project,
+// findings, landuse). We re-export them here under the names components
+// have always imported so none of the consumers need to rename on migration.
+// `FindingVM → Finding` and `LanduseSlice → LanduseClass` are purely
+// back-compat aliases — the generated interfaces are authoritative.
+import type { Citation } from "./schemas";
+
+export type {
+  Citation,
+  FindingVM as Finding,
+  LanduseSlice as LanduseClass,
+  ProjectMeta,
+} from "./schemas";
+
 export type Severity = "error" | "warning" | "info";
-
-export interface Citation {
-  id: string;
-  label: string;
-  source: string;
-}
-
-export interface Finding {
-  id: string;
-  severity: Severity;
-  title: string;
-  location: string;
-  evidence: string;
-  explanation: string;
-  suggestion: string;
-  citations: Citation[];
-  ruleId: string;
-}
-
-export interface ProjectMeta {
-  name: string;
-  path: string;
-  simulationStart: string;
-  simulationEnd: string;
-  warmupYears: number;
-  subbasins: number;
-  hrus: number;
-  channels: number;
-  weatherStations: number;
-  modelVersion: string;
-  outfallChannel: string;
-  climate: string;
-  area_km2: number;
-  readyToRun: boolean;
-}
 
 export interface HydrographPoint {
   date: string;

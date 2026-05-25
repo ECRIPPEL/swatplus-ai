@@ -11,6 +11,9 @@
   "modelVersion": "SWAT+ rev.61.0.2",
   "outfallChannel": "cha033",
   "climate": "Humid subtropical (Cfa)",
-  "area_km2": 412.6,
-  "readyToRun": true
+  "areaKm2": 412.6,
+  "readyToRun": true,
+  "outletLat": -29.82,
+  "outletLon": -53.95,
+  "biome": "Pampa / Atlantic Forest transition"
 }

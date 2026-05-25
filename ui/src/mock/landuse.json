@@ -1,0 +1,9 @@
+[
+  { "className": "AGRL", "name": "Agricultural - generic", "pct": 34.1, "areaKm2": 140.7 },
+  { "className": "FRST", "name": "Forest - mixed", "pct": 28.4, "areaKm2": 117.2 },
+  { "className": "PAST", "name": "Pasture", "pct": 18.2, "areaKm2": 75.1 },
+  { "className": "RNGE", "name": "Range - grasses", "pct": 8.0, "areaKm2": 33.0 },
+  { "className": "URBN", "name": "Residential (med.)", "pct": 5.6, "areaKm2": 23.1 },
+  { "className": "WATR", "name": "Water bodies", "pct": 3.1, "areaKm2": 12.8 },
+  { "className": "BARR", "name": "Barren / exposed soil", "pct": 2.6, "areaKm2": 10.7 }
+]
