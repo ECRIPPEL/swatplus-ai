@@ -6,8 +6,7 @@
 /swatdocR.pdf
 /example*.png
 /memory/
-/CLAUDE.md
-/.claude/
+
 
 # --- Python ---
 __pycache__/
@@ -74,6 +73,8 @@ handoff_*.md
 .git-commit-msg*.tmp
 SHARED_CONTRACTS.md
 handoff_*.md
+PUSH_PLAN.md
+push_alpha.sh
 
 # --- Per-project telemetry / cache dirs (never committed) ---
 .swatplus-ai/
@@ -84,13 +85,10 @@ data/retrieval/
 # --- Dogfood workspace (local only — real user projects + run notes) ---
 dogfood/
 
-# --- LLM prompt templates + static passages (local only — not published) ---
-src/swatplus_ai/prompts/*.md
+# --- LLM static-passage cache (local only — fetched on demand) ---
 src/swatplus_ai/prompts/static_passages/
 
-# --- WIP public-facing docs (rebuilt cleanly later, not during assembly) ---
-/CHANGELOG.md
-/README.md
+# --- WIP local planning docs (not published) ---
 /UI_REFACTOR_PLAN.md
 /future_steps/
 /design-dl/
